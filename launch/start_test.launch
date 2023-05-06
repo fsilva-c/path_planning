@@ -1,0 +1,3 @@
+<launch>
+    <node name="test_env" pkg="fs_path_planning" type="start_test.py" output="screen"/>
+</launch>

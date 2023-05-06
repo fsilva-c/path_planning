@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>fs_path_planning</name>
+  <version>0.0.0</version>
+  <description>The fs_path_planning package</description>
+
+  <maintainer email="fsilva.cpp@gmail.com">Filipe Silva</maintainer>
+
+  <license>TODO</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>rospy</build_depend>
+  <build_export_depend>rospy</build_export_depend>
+  <exec_depend>rospy</exec_depend>
+
+  <author email="fsilva.cpp@gmail.com">Filipe Silva</author>
+  <author email="msimoes@uneb.br">Marco Simões</author>
+
+  <export>
+
+  </export>
+</package>
