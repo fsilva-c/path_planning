@@ -52,7 +52,7 @@ class Movements:
         
         if not loop:
             while not self.in_target(trajectory[-1]):
-                pass
+                rospy.sleep(0.1)
 
     def in_target(self, target) -> None:
         uav_position = self.uav_info.get_uav_position()
