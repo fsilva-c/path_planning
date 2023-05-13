@@ -8,7 +8,16 @@ class Astar:
         self.start = start
         self.goal = goal
 
-        self.move_costs = {'up': 1, 'down': 1, 'left': 1, 'right': 1}
+        self.move_costs = {
+            'up': 1, 
+            'down': 1, 
+            'left': 1, 
+            'right': 1,
+            'up_left': 1,
+            'up_right': 1,
+            'down_left': 1,
+            'down_right': 1,
+        }
 
     def heuristic(self, node):
         return np.sqrt((node[0] - self.goal[0]) ** 2 + (node[1] - self.goal[1]) ** 2)
@@ -24,6 +33,14 @@ class Astar:
                 neighbors.append((node[0], node[1] - 1, cost))
             elif move == 'right' and node[1] < self.grid_size - 1 and self.grid[node[0], node[1] + 1] == 0:
                 neighbors.append((node[0], node[1] + 1, cost))
+            elif move == 'up_left' and node[0] > 0 and node[1] > 0 and self.grid[node[0]-1, node[1]-1] == 0:
+                neighbors.append((node[0] - 1, node[1] - 1, cost))
+            elif move == 'up_right' and node[0] > 0 and node[1] < self.grid_size - 1 and self.grid[node[0]-1, node[1]+1] == 0:
+                neighbors.append((node[0] - 1, node[1] + 1, cost))
+            elif move == 'down_left' and node[0] < self.grid_size - 1 and node[1] > 0 and self.grid[node[0]+1, node[1]-1] == 0:
+                neighbors.append((node[0] + 1, node[1] - 1, cost))
+            elif move == 'down_right' and node[0] < self.grid_size - 1 and node[1] < self.grid_size - 1 and self.grid[node[0]+1, node[1]+1] == 0:
+                neighbors.append((node[0] + 1, node[1] + 1, cost))
         return neighbors
 
     def a_star(self):

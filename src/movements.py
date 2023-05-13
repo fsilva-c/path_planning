@@ -1,10 +1,10 @@
 import rospy
 import numpy as np
 from uavinfo import UAVInfo
-from mrs_msgs.srv import ReferenceStampedSrv, TrajectoryReferenceSrv, PathSrv
-from mrs_msgs.msg import VelocityReferenceStamped, Path, Reference
-from geometry_msgs.msg import Point, Vector3
-from trajectory import list_to_trajectory
+from mrs_msgs.srv import ReferenceStampedSrv, PathSrv, String
+from std_srvs.srv import Trigger
+from mrs_msgs.msg import Reference
+from geometry_msgs.msg import Point
 
 class Movements:
     def __init__(self, uav_id=1) -> None:
@@ -34,39 +34,23 @@ class Movements:
         while not self.in_target(target):
             pass
 
-    def velocity(self, velocity):
-        rospy.loginfo('Set velocity...')
-        topic_name = f'/uav{self.uav_id}/control_manager/velocity_reference'
-        msg_topic = VelocityReferenceStamped()
-        msg_topic.reference.velocity = Vector3(velocity[0], velocity[1], velocity[2])
-        pub = rospy.Publisher(topic_name, VelocityReferenceStamped, queue_size=10)
-        pub.publish(msg_topic)
-        rospy.sleep(1.0)
+    def set_velocity(self, mode):
+        srv_name = f'/uav{self.uav_id}/constraint_manager/set_constraints'
+        rospy.wait_for_service(srv_name)
+        srv_set_mode = rospy.ServiceProxy(srv_name, String)
+        req = String._request_class()
+        req.value = mode
+        srv_set_mode(req)
 
-    def goto_trajectory2(self, trajectory):
-        rospy.loginfo('GOTO trajectory uav...')
-        topic_name = f'/uav{self.uav_id}/trajectory_generation/path'
-        
-        points = []
-        for point in trajectory:
-            reference = Reference()
-            reference.position = Point(point[0], point[1], point[2])
-            reference.heading = 0.0
-            points.append(reference)
-        
-        msg = Path()
-        msg.header.stamp = rospy.Time().now()
-        msg.fly_now = True
-        msg.points = points
-
-        pub = rospy.Publisher(topic_name, Path, queue_size=10)
-        pub.publish(msg)
-
-        rospy.sleep(0.1)
-        
+    def hover(self):
+        srv_name = f'/uav{self.uav_id}/control_manager/hover'
+        rospy.wait_for_service(srv_name)
+        srv_hover = rospy.ServiceProxy(srv_name, Trigger)
+        req = Trigger._request_class()
+        srv_hover(req)
 
     def goto_trajectory(self, trajectory) -> None:
-        rospy.loginfo('GOTO trajectory uav...')
+        # rospy.loginfo('GOTO trajectory uav...')
 
         srv_name = f'/uav{self.uav_id}/trajectory_generation/path'
         rospy.wait_for_service(srv_name)
@@ -94,6 +78,10 @@ class Movements:
 
     def in_target(self, target) -> None:
         uav_position = self.uav_info.get_uav_position()
+        
+        if len(target) < 3: # se goto3D -> ponto envolve o eixo z
+            target.append(uav_position.z)
+
         point_dist = np.linalg.norm(
             np.array([target[0], target[1], target[2]]) - np.array([uav_position.x, uav_position.y, uav_position.z])
         )
