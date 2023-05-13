@@ -1,8 +1,9 @@
 import rospy
 import numpy as np
 from uavinfo import UAVInfo
-from mrs_msgs.srv import ReferenceStampedSrv, TrajectoryReferenceSrv
-from geometry_msgs.msg import Point
+from mrs_msgs.srv import ReferenceStampedSrv, TrajectoryReferenceSrv, PathSrv
+from mrs_msgs.msg import VelocityReferenceStamped, Path, Reference
+from geometry_msgs.msg import Point, Vector3
 from trajectory import list_to_trajectory
 
 class Movements:
@@ -33,26 +34,63 @@ class Movements:
         while not self.in_target(target):
             pass
 
-    def goto_trajectory(self, trajectory, loop=False) -> None:
+    def velocity(self, velocity):
+        rospy.loginfo('Set velocity...')
+        topic_name = f'/uav{self.uav_id}/control_manager/velocity_reference'
+        msg_topic = VelocityReferenceStamped()
+        msg_topic.reference.velocity = Vector3(velocity[0], velocity[1], velocity[2])
+        pub = rospy.Publisher(topic_name, VelocityReferenceStamped, queue_size=10)
+        pub.publish(msg_topic)
+        rospy.sleep(1.0)
+
+    def goto_trajectory2(self, trajectory):
+        rospy.loginfo('GOTO trajectory uav...')
+        topic_name = f'/uav{self.uav_id}/trajectory_generation/path'
+        
+        points = []
+        for point in trajectory:
+            reference = Reference()
+            reference.position = Point(point[0], point[1], point[2])
+            reference.heading = 0.0
+            points.append(reference)
+        
+        msg = Path()
+        msg.header.stamp = rospy.Time().now()
+        msg.fly_now = True
+        msg.points = points
+
+        pub = rospy.Publisher(topic_name, Path, queue_size=10)
+        pub.publish(msg)
+
+        rospy.sleep(0.1)
+        
+
+    def goto_trajectory(self, trajectory) -> None:
         rospy.loginfo('GOTO trajectory uav...')
 
-        srv_name = f'/uav{self.uav_id}/control_manager/trajectory_reference'
+        srv_name = f'/uav{self.uav_id}/trajectory_generation/path'
         rospy.wait_for_service(srv_name)
-        service_proxy = rospy.ServiceProxy(srv_name, TrajectoryReferenceSrv)
+        service_proxy = rospy.ServiceProxy(srv_name, PathSrv)
+
+        points = []
+        for point in trajectory:
+            reference = Reference()
+            reference.position = Point(point[0], point[1], point[2])
+            reference.heading = 0.0
+            points.append(reference)
         
-        msg_srv = TrajectoryReferenceSrv._request_class()
-        msg_srv.trajectory.fly_now = True
-        msg_srv.trajectory.loop = loop
-        msg_srv.trajectory.points = list_to_trajectory(trajectory)
+        msg_srv = PathSrv._request_class()
+        msg_srv.path.points = points
+        msg_srv.path.fly_now = True
 
         try:
             service_proxy(msg_srv)
         except rospy.ServiceException as e:
             rospy.logerr(f'Erro ao chamar o serviço {srv_name}: {e}')
         
-        if not loop:
-            while not self.in_target(trajectory[-1]):
-                rospy.sleep(0.1)
+        # if not loop:
+        #     while not self.in_target(trajectory[-1]):
+        rospy.sleep(0.1)
 
     def in_target(self, target) -> None:
         uav_position = self.uav_info.get_uav_position()
