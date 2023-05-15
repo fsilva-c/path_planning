@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 
 import rospy
-from uav import UAV
-from path_planner import PathPlanner
+from uav.uav import UAV
+from classic_path_planner.global_planner import GlobalPathPlanner
 
 uav = UAV(uav_id=1)
-pp = PathPlanner(goal=(30.0, 15.0))
+gpp = GlobalPathPlanner(goal=(-60.0, -25.0))
 
-def start_astar():
-    rospy.init_node('astar', anonymous=True)
+def start_astar_mission():
+    rospy.init_node('astar_mission', anonymous=True)
 
     rospy.loginfo('Iniciando os testes...')
     rospy.sleep(5.0)
@@ -19,6 +19,6 @@ def start_astar():
         rospy.sleep(0.1)
 
     rospy.loginfo('Iniciando os testes...')
-    pp.run()
+    gpp.run()
 
-start_astar()
+start_astar_mission()

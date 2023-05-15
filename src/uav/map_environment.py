@@ -1,7 +1,6 @@
 import math
-import geometry
-import numpy as np
-from uav_info import UAVInfo
+from geometry.geometry import Geometry
+from uav.uav_info import UAVInfo
 
 MAX_RANGE = 14.0
 
@@ -24,7 +23,7 @@ class MapEnvironment:
     def sort_by_drone_distance(self, l):
         uav_position = self.uav_info.get_uav_position()
         def distance(p):
-            return geometry.euclidean_distance([uav_position.x, uav_position.y], p)
+            return Geometry.euclidean_distance([uav_position.x, uav_position.y], p)
         l.sort(key=distance)
 
     def distance_to_closest_obstacle(self, max_range=MAX_RANGE):
@@ -32,6 +31,6 @@ class MapEnvironment:
         if obstacles:
             sorted_obstacles = sorted(obstacles, key=lambda p: (p[0] ** 2 + p[1] ** 2) ** 0.5)
             obstacle = sorted_obstacles[0]
-            return geometry.euclidean_distance(obstacle, (0, 0))
+            return Geometry.euclidean_distance(obstacle, (0, 0))
         return None
     

@@ -1,6 +1,6 @@
-from movements import Movements
-from uav_info import UAVInfo
-from map_environment import MapEnvironment
+from uav.movements import Movements
+from uav.uav_info import UAVInfo
+from uav.map_environment import MapEnvironment
 
 class UAV:
     def __init__(self, uav_id=1) -> None:

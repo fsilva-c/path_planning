@@ -1,6 +1,6 @@
 import rospy
 import numpy as np
-from uav_info import UAVInfo
+from uav.uav_info import UAVInfo
 from mrs_msgs.srv import ReferenceStampedSrv, PathSrv, String
 from std_srvs.srv import Trigger
 from mrs_msgs.msg import Reference
@@ -50,7 +50,7 @@ class Movements:
         srv_hover(req)
 
     def goto_trajectory(self, trajectory, fly_now=True) -> None:
-        # rospy.loginfo('GOTO trajectory uav...')
+        rospy.loginfo('GOTO trajectory uav...')
 
         srv_name = f'/uav{self.uav_id}/trajectory_generation/path'
         rospy.wait_for_service(srv_name)
@@ -77,9 +77,15 @@ class Movements:
         except rospy.ServiceException as e:
             rospy.logerr(f'Erro ao chamar o serviço {srv_name}: {e}')
         
-        # if not loop:
-        #     while not self.in_target(trajectory[-1]):
         rospy.sleep(0.1)
+
+    def switch_controller(self, controller):
+        srv_name = f'/uav{self.uav_id}/control_manager/switch_controller'
+        rospy.wait_for_service(srv_name)
+        srv_set_mode = rospy.ServiceProxy(srv_name, String)
+        req = String._request_class()
+        req.value = controller
+        srv_set_mode(req)
 
     def in_target(self, target) -> None:
         uav_position = self.uav_info.get_uav_position()

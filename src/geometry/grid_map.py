@@ -255,39 +255,3 @@ def test_position_set():
     grid_map.set_value_from_xy_pos(9.1, 0.1, 1.0)
 
     grid_map.plot_grid_map()
-
-
-def main():
-    drone_position = (0, 0)
-    grid = GridMap(
-        width=10,
-        height=10,
-        resolution=0.5,
-        center_x=drone_position[0],
-        center_y=drone_position[1],
-    )
-
-    # grid.set_value_from_xy_pos(2, 2, 1.0)
-    # grid.set_value_from_xy_pos(-2, -2, 1.0)
-    # grid.expand_grid()
-    # grid_data = np.reshape(np.array(grid.data), (10, 10))
-    # print(grid_data)
-    # check_occupied_from_xy_index
-
-    # index = grid.get_xy_index_from_xy_pos(48.1, 1)
-    pos = (1.5, 1.5)
-    print('POS', pos)
-    index = grid.get_xy_index_from_xy_pos(pos[0], pos[1])
-    print('GRID INDEX', index)
-    pos = grid.get_xy_pos_from_xy_index(index[0], index[1])
-
-    print('POS 2', pos)
-    index = grid.get_xy_index_from_xy_pos(pos[0], pos[1])
-    print('GRID INDEX 2', index)
-    # print(grid.get_value_from_xy_index(index[0], index[1]))
-    # print(index)
-
-    index = grid
-
-if __name__ == '__main__':
-    main()
