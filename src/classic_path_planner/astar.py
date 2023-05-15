@@ -1,4 +1,5 @@
 import math
+from geometry.geometry import Geometry
 
 class AStar:
     def __init__(self, grid_map):
@@ -6,6 +7,7 @@ class AStar:
 
     def heuristic(self, a, b):
         return (abs(a[0] - b[0]) + abs(a[1] - b[1])) * self.grid_map.resolution
+        # return Geometry.euclidean_distance(a, b) * self.grid_map.resolution
         # return math.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2) * self.grid_map.resolution
 
     def is_valid(self, node):
