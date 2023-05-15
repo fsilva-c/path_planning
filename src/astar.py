@@ -1,72 +1,69 @@
-import numpy as np
-from queue import PriorityQueue
+import heapq
+import math
 
-class Astar:
-    def __init__(self, grid, start, goal) -> None:
-        self.grid = grid
-        self.grid_size = grid.shape[0]
-        self.start = start
-        self.goal = goal
+class AStar:
+    def __init__(self, grid_map):
+        self.grid_map = grid_map
 
-        self.move_costs = {
-            'up': 1, 
-            'down': 1, 
-            'left': 1, 
-            'right': 1,
-            'up_left': 1,
-            'up_right': 1,
-            'down_left': 1,
-            'down_right': 1,
-        }
+    def heuristic(self, a, b):
+        return math.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2)
 
-    def heuristic(self, node):
-        return np.sqrt((node[0] - self.goal[0]) ** 2 + (node[1] - self.goal[1]) ** 2)
+    def is_valid(self, node):
+        x, y = node
+        grid_ind = self.grid_map.calc_grid_index_from_xy_index(x, y)
+        return 0 <= grid_ind < self.grid_map.ndata
 
-    def get_neighbors(self, node):
-        neighbors = []
-        for move, cost in self.move_costs.items():
-            if move == 'up' and node[0] > 0 and self.grid[node[0] - 1, node[1]] == 0:
-                neighbors.append((node[0] - 1, node[1], cost))
-            elif move == 'down' and node[0] < self.grid_size - 1 and self.grid[node[0] + 1, node[1]] == 0:
-                neighbors.append((node[0] + 1, node[1], cost))
-            elif move == 'left' and node[1] > 0 and self.grid[node[0], node[1] - 1] == 0:
-                neighbors.append((node[0], node[1] - 1, cost))
-            elif move == 'right' and node[1] < self.grid_size - 1 and self.grid[node[0], node[1] + 1] == 0:
-                neighbors.append((node[0], node[1] + 1, cost))
-            elif move == 'up_left' and node[0] > 0 and node[1] > 0 and self.grid[node[0]-1, node[1]-1] == 0:
-                neighbors.append((node[0] - 1, node[1] - 1, cost))
-            elif move == 'up_right' and node[0] > 0 and node[1] < self.grid_size - 1 and self.grid[node[0]-1, node[1]+1] == 0:
-                neighbors.append((node[0] - 1, node[1] + 1, cost))
-            elif move == 'down_left' and node[0] < self.grid_size - 1 and node[1] > 0 and self.grid[node[0]+1, node[1]-1] == 0:
-                neighbors.append((node[0] + 1, node[1] - 1, cost))
-            elif move == 'down_right' and node[0] < self.grid_size - 1 and node[1] < self.grid_size - 1 and self.grid[node[0]+1, node[1]+1] == 0:
-                neighbors.append((node[0] + 1, node[1] + 1, cost))
-        return neighbors
+    def is_obstacle(self, node):
+        x, y = node
+        return self.grid_map.check_occupied_from_xy_index(x, y)
 
-    def a_star(self):
-        open_list = PriorityQueue()
-        open_list.put((0, self.start))
+    def neighbors(self, node):
+        row, col = node
+        candidates = [
+            (row + 1, col), (row - 1, col), (row, col + 1), (row, col - 1),
+            (row + 1, col + 1), (row + 1, col - 1), (row - 1, col + 1), (row - 1, col - 1)]
+        results = filter(self.is_valid, candidates)
+        return filter(lambda n: not self.is_obstacle(n), results)
+
+    def find_path(self, start, goal):
+        start = self.grid_map.get_xy_index_from_xy_pos(start[0], start[1])
+        goal = self.grid_map.get_xy_index_from_xy_pos(goal[0], goal[1])
+
+        open_list = []
+        closed_set = set()
         came_from = {}
-        cost_so_far = {self.start: 0}
+        g_scores = {start: 0}
+        f_scores = {start: self.heuristic(start, goal)}
 
-        while not open_list.empty():
-            current = open_list.get()[1]
+        heapq.heappush(open_list, (f_scores[start], start))
 
-            if current == self.goal:
-                break
+        while open_list:
+            current = heapq.heappop(open_list)[1]
+            # print(current)
 
-            for neighbor in self.get_neighbors(current):
-                new_cost = cost_so_far[current] + neighbor[2]
-                if neighbor[0:2] not in cost_so_far or new_cost < cost_so_far[neighbor[0:2]]:
-                    cost_so_far[neighbor[0:2]] = new_cost
-                    priority = new_cost + self.heuristic(neighbor[0:2])
-                    open_list.put((priority, neighbor[0:2]))
-                    came_from[neighbor[0:2]] = current
+            if current == goal:
+                path = []
+                while current in came_from:
+                    x, y = current
+                    path.append(self.grid_map.get_xy_pos_from_xy_index(x, y))
+                    current = came_from[current]
+                path.append(self.grid_map.get_xy_pos_from_xy_index(start[0], start[1]))
+                path.reverse()
+                return path
 
-        # monta o caminho a partir dos nós visitados...
-        path = [self.goal]
-        while path[-1] != self.start:
-            path.append(came_from[path[-1]])
+            closed_set.add(current)
 
-        return path[::-1]
-    
+            for neighbor in self.neighbors(current):
+                tentative_g_score = g_scores[current] + 1
+
+                if neighbor in closed_set and tentative_g_score >= g_scores.get(neighbor, float('inf')):
+                    continue
+
+                if tentative_g_score < g_scores.get(neighbor, float('inf')):
+                    came_from[neighbor] = current
+                    g_scores[neighbor] = tentative_g_score
+                    f_scores[neighbor] = tentative_g_score + self.heuristic(neighbor, goal)
+                    if neighbor not in closed_set:
+                        heapq.heappush(open_list, (f_scores[neighbor], neighbor))
+
+        return None

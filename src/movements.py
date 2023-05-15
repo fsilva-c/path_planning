@@ -1,6 +1,6 @@
 import rospy
 import numpy as np
-from uavinfo import UAVInfo
+from uav_info import UAVInfo
 from mrs_msgs.srv import ReferenceStampedSrv, PathSrv, String
 from std_srvs.srv import Trigger
 from mrs_msgs.msg import Reference
@@ -49,7 +49,7 @@ class Movements:
         req = Trigger._request_class()
         srv_hover(req)
 
-    def goto_trajectory(self, trajectory) -> None:
+    def goto_trajectory(self, trajectory, fly_now=True) -> None:
         # rospy.loginfo('GOTO trajectory uav...')
 
         srv_name = f'/uav{self.uav_id}/trajectory_generation/path'
@@ -59,13 +59,18 @@ class Movements:
         points = []
         for point in trajectory:
             reference = Reference()
+
+            if len(point) < 3:
+                point = list(point)
+                point.append(self.uav_info.get_uav_position().z)
+
             reference.position = Point(point[0], point[1], point[2])
             reference.heading = 0.0
             points.append(reference)
         
         msg_srv = PathSrv._request_class()
         msg_srv.path.points = points
-        msg_srv.path.fly_now = True
+        msg_srv.path.fly_now = fly_now
 
         try:
             service_proxy(msg_srv)

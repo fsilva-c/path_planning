@@ -2,18 +2,14 @@
 # -*- coding: utf-8 -*-
 
 import rospy
-import numpy as np
 from uav import UAV
-from hector import Hector
-from astar import Astar
 from path_planner import PathPlanner
 
 uav = UAV(uav_id=1)
-hector = Hector()
-pp = PathPlanner(goal=(0, 0))
+pp = PathPlanner(goal=(30.0, 15.0))
 
 def start_astar():
-    rospy.init_node('test_octomap', anonymous=True)
+    rospy.init_node('astar', anonymous=True)
 
     rospy.loginfo('Iniciando os testes...')
     rospy.sleep(5.0)
