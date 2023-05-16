@@ -19,7 +19,6 @@ class UAVInfo:
         rospy.Subscriber(f'{topic_prefix}/control_manager/diagnostics', ControlManagerDiagnostics, self.callback_diagnostics)
         rospy.Subscriber(f'{topic_prefix}/rplidar/scan', LaserScan, self.callback_laser_scan)
 
-
     def callback_position(self, data):
         self.uav_pos = data
 

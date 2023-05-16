@@ -3,22 +3,25 @@ from classic_path_planner.astar import AStar
 from time import perf_counter
 from uav.uav import UAV
 from geometry.grid_map import GridMap
+from geometry.geometry import Geometry
 
-class GlobalPathPlannerState:
+from classic_path_planner.local_planner import LocalPathPlanner
+
+class PathPlannerState:
     PLANNING =  1
-    OBSTACLE_FOUND = 2
-    MOVING = 3
-    GOAL_REACHED = 4
+    MOVING = 2
+    GOAL_REACHED = 3
 
 class GlobalPathPlanner:
     def __init__(
             self,
             goal,
             uav_id=1,
-            grid_size=400,
-            resolution=0.5,
+            grid_size=200,
+            resolution=1.0,
             max_obstacle_dist=0.7,
         ) -> None:
+        self.start = None
         self.goal = goal
         self.uav = UAV(uav_id)
         self.grid_size = grid_size
@@ -26,8 +29,9 @@ class GlobalPathPlanner:
         self.max_obstacle_dist = max_obstacle_dist
         self.grid_map = None
         self.current_path = None
-        self.current_state = GlobalPathPlannerState.PLANNING
+        self.current_state = PathPlannerState.PLANNING
         self.attempts_obstacle_avoid = 0
+        self.lpp = None
 
         self.on_init()
 
@@ -42,6 +46,10 @@ class GlobalPathPlanner:
             center_y=uav_position.y
         )
 
+        self.lpp = LocalPathPlanner(
+            uav_id=self.uav.id
+        )
+
     def run(self):
         uav_position = self.uav.uav_info.get_uav_position()
 
@@ -51,28 +59,36 @@ class GlobalPathPlanner:
         )
 
         # para testes...
-        self.uav.movements.switch_controller('Se3Controller')
-        # self.uav.movements.switch_controller('MpcController')
-        self.uav.movements.set_velocity('fast')
+        self.uav.movements.switch_controller('MpcController') # Se3Controller
+        self.uav.movements.set_velocity('slow')
 
-        while self.current_state != GlobalPathPlannerState.GOAL_REACHED:
+        while self.current_state != PathPlannerState.GOAL_REACHED:
             self.update()
-            rospy.sleep(0.1)
+            rospy.sleep(0.01)
 
     def update(self):
-        if self.current_state == GlobalPathPlannerState.PLANNING:
+        if self.current_state == PathPlannerState.PLANNING:
             rospy.loginfo(f'[PathPlanner]: planejando o caminho...')
             self.path_plan()
-            self.current_state = GlobalPathPlannerState.MOVING
+            self.current_state = PathPlannerState.MOVING
 
-        elif self.current_state == GlobalPathPlannerState.MOVING:
+        elif self.current_state == PathPlannerState.MOVING:
             if self.uav.movements.in_target([self.goal[0], self.goal[1]]):
                 rospy.loginfo(f'[PathPlanner]: chegou no alvo...')
-                self.current_state = GlobalPathPlannerState.GOAL_REACHED
+                self.current_state = PathPlannerState.GOAL_REACHED
+            elif self.distance_to_start() >= 10.0:
+                rospy.loginfo(f'[PathPlanner]: distância máxima andada alcançada. replanejando a rota...')
+                self.current_state = PathPlannerState.PLANNING
+
+    def distance_to_start(self):
+        uav_position = self.uav.uav_info.get_uav_position()
+        return Geometry.norm(self.start, [uav_position.x, uav_position.y])
 
     def path_plan(self):
         rospy.loginfo('[PathPlanner]: Path Planning...')
         time_start = perf_counter()
+        uav_position = self.uav.uav_info.get_uav_position()
+        self.start = (round(uav_position.x * 2) / 2, round(uav_position.y * 2) / 2)
         obstacles = self.uav.map_environment.get_obstacles()
 
         # adiciona os obstáculos no grid...
@@ -82,14 +98,14 @@ class GlobalPathPlanner:
         
         # expande os obstáculos..
         self.grid_map.expand_grid()
+        # self.grid_map.expand_grid()
         
         # find path...
-        uav_position = self.uav.uav_info.get_uav_position()
         astar = AStar(self.grid_map)
         path = astar.find_path(
-            start=(round(uav_position.x * 2) / 2, round(uav_position.y * 2) / 2),
+            start=self.start,
             goal=self.goal
         )
+        self.current_path = path
         rospy.loginfo(f'[PathPlanner]: O planejamento levou {round(perf_counter() - time_start, 5)}s para ser concluído...')
-        # print(path)
         self.uav.movements.goto_trajectory(path)

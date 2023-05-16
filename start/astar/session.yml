@@ -10,7 +10,7 @@ windows:
   - gazebo:
       layout: tiled
       panes:
-        - waitForRos; roslaunch mrs_simulation simulation.launch gui:=true # world_name:=forest
+        - waitForRos; roslaunch mrs_simulation simulation.launch gui:=true world_name:=forest
   - status:
       layout: tiled
       panes:
@@ -34,7 +34,7 @@ windows:
   - goto:
       layout: tiled
       panes:
-        - 'history -s roslaunch fs_path_planning start_test.launch'
+        - 'history -s roslaunch fs_path_planning start_astart_mission.launch'
   - rviz:
       layout: tiled
       panes:

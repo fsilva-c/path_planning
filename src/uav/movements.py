@@ -32,7 +32,7 @@ class Movements:
             rospy.logerr(f'Erro ao chamar o serviço {srv_name}: {e}')
 
         while not self.in_target(target):
-            pass
+            rospy.sleep(0.1)
 
     def set_velocity(self, mode):
         srv_name = f'/uav{self.uav_id}/constraint_manager/set_constraints'
@@ -49,7 +49,7 @@ class Movements:
         req = Trigger._request_class()
         srv_hover(req)
 
-    def goto_trajectory(self, trajectory, fly_now=True) -> None:
+    def goto_trajectory(self, trajectory, fly_now=True, wait=False) -> None:
         rospy.loginfo('GOTO trajectory uav...')
 
         srv_name = f'/uav{self.uav_id}/trajectory_generation/path'
@@ -77,7 +77,9 @@ class Movements:
         except rospy.ServiceException as e:
             rospy.logerr(f'Erro ao chamar o serviço {srv_name}: {e}')
         
-        rospy.sleep(0.1)
+        if wait:
+            while not self.in_target(list(trajectory[-1])):
+                rospy.sleep(0.1)
 
     def switch_controller(self, controller):
         srv_name = f'/uav{self.uav_id}/control_manager/switch_controller'

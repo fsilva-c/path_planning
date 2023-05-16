@@ -6,9 +6,8 @@ class AStar:
         self.grid_map = grid_map
 
     def heuristic(self, a, b):
-        return (abs(a[0] - b[0]) + abs(a[1] - b[1])) * self.grid_map.resolution
+        return Geometry.manhattan_distance(a, b) * self.grid_map.resolution
         # return Geometry.euclidean_distance(a, b) * self.grid_map.resolution
-        # return math.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2) * self.grid_map.resolution
 
     def is_valid(self, node):
         x, y = node
@@ -22,10 +21,10 @@ class AStar:
     def neighbors(self, node):
         x, y = node
         neighbors = []
-        # Define the possible movement directions: up, down, left, and right
         directions = [
             (0, 1), (0, -1), (1, 0), (-1, 0),
             (1, 1), (1, -1), (-1, 1), (-1, -1)]
+        
         for dx, dy in directions:
             neighbor = (x + dx, y + dy)
             if self.is_valid(neighbor) and not self.is_obstacle(neighbor):
