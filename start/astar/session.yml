@@ -11,6 +11,7 @@ windows:
       layout: tiled
       panes:
         - waitForRos; roslaunch mrs_simulation simulation.launch gui:=true world_name:=forest
+        - waitForOdometry; gz camera -c gzclient_camera -f ${UAV_NAME}; history -s gz camera -c gzclient_camera -f ${UAV_NAME}
   - status:
       layout: tiled
       panes:

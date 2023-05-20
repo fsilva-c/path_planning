@@ -6,8 +6,8 @@ class AStar:
         self.grid_map = grid_map
 
     def heuristic(self, a, b):
-        return Geometry.manhattan_distance(a, b) * self.grid_map.resolution
-        # return Geometry.euclidean_distance(a, b) * self.grid_map.resolution
+        # return Geometry.manhattan_distance(a, b) * self.grid_map.resolution
+        return Geometry.euclidean_distance(a, b) * self.grid_map.resolution
 
     def is_valid(self, node):
         x, y = node

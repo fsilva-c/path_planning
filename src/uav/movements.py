@@ -1,7 +1,7 @@
 import rospy
 import numpy as np
 from uav.uav_info import UAVInfo
-from mrs_msgs.srv import ReferenceStampedSrv, PathSrv, String
+from mrs_msgs.srv import ReferenceStampedSrv, PathSrv, String, Vec1
 from std_srvs.srv import Trigger
 from mrs_msgs.msg import Reference
 from geometry_msgs.msg import Point
@@ -49,6 +49,17 @@ class Movements:
         req = Trigger._request_class()
         srv_hover(req)
 
+    def set_heading(self, heading):
+        srv_name = f'/uav{self.uav_id}/control_manager/set_heading'
+        rospy.wait_for_service(srv_name)
+        srv_set_mode = rospy.ServiceProxy(srv_name, Vec1)
+        req = Vec1._request_class()
+        req.goal = heading
+        srv_set_mode(req)
+        dt = 0.1
+        while abs(self.uav_info.get_heading() - heading) >= dt:
+            pass
+
     def goto_trajectory(self, trajectory, fly_now=True, wait=False) -> None:
         rospy.loginfo('GOTO trajectory uav...')
 
@@ -62,13 +73,14 @@ class Movements:
 
             if len(point) < 3:
                 point = list(point)
-                point.append(self.uav_info.get_uav_position().z)
+                point.append(self.uav_info.get_garmin_range())
 
             reference.position = Point(point[0], point[1], point[2])
             reference.heading = 0.0
             points.append(reference)
         
         msg_srv = PathSrv._request_class()
+        msg_srv.path.use_heading = True
         msg_srv.path.points = points
         msg_srv.path.fly_now = fly_now
 

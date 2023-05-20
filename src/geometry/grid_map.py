@@ -184,6 +184,8 @@ class GridMap:
             self.set_value_from_xy_index(ix, iy + 1, val=1.0)
             self.set_value_from_xy_index(ix + 1, iy + 1, val=1.0)
             self.set_value_from_xy_index(ix - 1, iy, val=1.0)
+            self.set_value_from_xy_index(ix - 1, iy + 1, val=1.0)
+            self.set_value_from_xy_index(ix + 1, iy - 1, val=1.0)
             self.set_value_from_xy_index(ix, iy - 1, val=1.0)
             self.set_value_from_xy_index(ix - 1, iy - 1, val=1.0)
 

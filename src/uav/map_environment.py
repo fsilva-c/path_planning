@@ -1,4 +1,6 @@
 import math
+import struct
+import numpy as np
 from geometry.geometry import Geometry
 from uav.uav_info import UAVInfo
 
@@ -8,6 +10,26 @@ class MapEnvironment:
     def __init__(self, uav_id=1) -> None:
         self.uav_id = uav_id
         self.uav_info = UAVInfo(uav_id)
+
+    def get_obstacles2(self):
+        cos_sin_map = np.array([[]])
+        laser_scan = self.uav_info.get_laser_scan()
+        
+        N = len(laser_scan.ranges)
+        ranges = np.array(laser_scan.ranges)
+        angles = laser_scan.angle_min + np.arange(N) * laser_scan.angle_increment
+        cos_sin_map = np.array([np.cos(angles), np.sin(angles)])
+
+        obstacles = ranges * cos_sin_map
+        # obstacles = obstacles[np.isfinite(obstacles)]
+        points = []
+        for i in range(N):
+            point = obstacles[:, i].tolist()
+            x, _ = point
+            if math.isfinite(x):
+                points.append(point)
+
+        return points
     
     def get_obstacles(self, max_range=MAX_RANGE):
         laser_scan = self.uav_info.get_laser_scan()
@@ -19,6 +41,24 @@ class MapEnvironment:
                 y = range * math.sin(angle)
                 obstacles.append([x, y])
         return obstacles
+    
+    def unpack_point_cloud_2(self):
+        cloud = self.uav_info.get_point_cloud_2()
+        data = cloud.data
+        point_step = cloud.point_step
+
+        x_offset = cloud.fields[0].offset
+        y_offset = cloud.fields[1].offset
+        z_offset = cloud.fields[2].offset
+
+        points = []
+        for i in range(0, len(data), point_step):
+            x = struct.unpack_from('f', data, i + x_offset)[0]
+            y = struct.unpack_from('f', data, i + y_offset)[0]
+            z = struct.unpack_from('f', data, i + z_offset)[0]
+            points.append((x, y, z))
+
+        return points
 
     def sort_by_drone_distance(self, l):
         uav_position = self.uav_info.get_uav_position()
