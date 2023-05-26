@@ -19,11 +19,11 @@ class AStar:
     def __init__(self, obstacles):
         self.obstacles = obstacles
         self.dg = DiscreteGrid(resolution=0.5)
-        self.treshold = 2.8
+        self.treshold = 0.9 / 0.5
 
     def is_obstacle(self, node):
         for p in self.obstacles:
-            if Geometry.norm(p, node) < self.treshold:
+            if Geometry.euclidean_distance(p, node) < self.treshold:
                 return True
         return False
 
@@ -40,14 +40,13 @@ class AStar:
             new_y = y + dy
             new_z = z + dz
 
-            if (0 <= new_x < 100 and 0 <= new_y < 100 and 0 <= new_z < 100 and
-                not self.is_obstacle((new_x, new_y, new_y))):
+            if (not self.is_obstacle((new_x, new_y, new_y))):
                 neighbors.add((new_x, new_y, new_z))
 
         return neighbors
 
     def heuristic(self, current, end_point):
-        return Geometry.norm(current, end_point)
+        return Geometry.euclidean_distance(current, end_point)
 
     def find_path(self, start, goal):
         start = self.dg.continuous_to_discrete(start)
@@ -57,10 +56,11 @@ class AStar:
         frontier.put(start, 0)
 
         came_from = dict()
-        came_from[start]=None
+        came_from[start] = None
+        came_from[goal] = goal
 
         cost_value = dict()
-        cost_value[start]=0
+        cost_value[start] = 0
 
         while not frontier.empty():
             current = frontier.get()
@@ -68,13 +68,12 @@ class AStar:
                 break
             neighbors = self.get_neighbors(current)
             for next in neighbors:
-                # new_cost = cost_value[current] + self.cost_map[next]
                 new_cost = self.heuristic(current, next)
                 if next not in cost_value or new_cost < cost_value[next]:
                     cost_value[next] = new_cost 
                     priority = new_cost + self.heuristic(next, goal)
                     frontier.put(next,priority)
-                    came_from[next]=current
+                    came_from[next] = current
 
         current = goal
         path = []

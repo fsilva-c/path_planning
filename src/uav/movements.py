@@ -76,7 +76,7 @@ class Movements:
                 point.append(self.uav_info.get_garmin_range())
 
             reference.position = Point(point[0], point[1], point[2])
-            reference.heading = 0.0
+            # reference.heading = 0.0
             points.append(reference)
         
         msg_srv = PathSrv._request_class()
