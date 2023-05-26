@@ -1,0 +1,26 @@
+[INFO] [1683843553.271094, 0.000000]: Iniciando os testes...
+... logging to /home/fs/.ros/log/fccc4b46-f03d-11ed-9562-0045e2973f85/roslaunch-fs-321802.log
+Checking log directory for disk usage. This may take a while.
+Press Ctrl-C to interrupt
+Done checking log file disk usage. Usage is <1GB.
+]2;/home/fs/user_ros_workspace/src/fs-path-planning/launch/start_test.launch
+[1mstarted roslaunch server http://fs:42933/[0m
+
+SUMMARY
+========
+
+PARAMETERS
+ * /rosdistro: noetic
+ * /rosversion: 1.16.0
+
+NODES
+  /
+    test_env (fs_path_planning/start_test.py)
+
+[1mROS_MASTER_URI=http://localhost:11311[0m
+]2;/home/fs/user_ros_workspace/src/fs-path-planning/launch/start_test.launch http://localhost:11311
+[1mprocess[test_env-1]: started with pid [321849][0m
+[test_env-1] killing on exit
+shutting down processing monitor...
+... shutting down processing monitor complete
+[1mdone[0m

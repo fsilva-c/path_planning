@@ -18,19 +18,6 @@ class PathPlanner:
         self.uav = UAV(uav_id)
         self.grid_size = grid_size
         self.resolution = resolution
-        self.grid_map = None
-
-        self.on_init()
-
-    def on_init(self):
-        uav_position = self.uav.uav_info.get_uav_position()
-        self.grid_map = GridMap(
-            width=self.grid_size,
-            height=self.grid_size,
-            resolution=self.resolution,
-            center_x=uav_position.x,
-            center_y=uav_position.y
-        )
 
     def run(self):
         uav_position = self.uav.uav_info.get_uav_position()
@@ -47,17 +34,18 @@ class PathPlanner:
                 self.path_plan()
             # self.uav.movements.set_heading(0.0)
             # print(f'Distance: {self.uav.map_environment.distance_to_closest_obstacle()}')
-            rospy.sleep(0.1)
+            rospy.sleep(0.01)
 
     def distance_to_start(self):
         uav_position = self.uav.uav_info.get_uav_position()
-        return Geometry.norm(self.start, [uav_position.x, uav_position.y])
+        return Geometry.norm(self.start, [uav_position.x, uav_position.y, uav_position.z])
 
     def path_plan(self):
         rospy.loginfo('[PathPlanner]: Path Planning...')
         time_start = perf_counter()
 
         uav_position = self.uav.uav_info.get_uav_position()
+        self.start = (uav_position.x, uav_position.y)
 
         grid_map = GridMap(
             width=self.grid_size,
@@ -67,7 +55,6 @@ class PathPlanner:
             center_y=uav_position.y
         )
 
-        self.start = (uav_position.x, uav_position.y)
         obstacles = self.uav.map_environment.get_obstacles()
 
         # adiciona os obstáculos no grid...
