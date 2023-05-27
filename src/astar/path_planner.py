@@ -6,12 +6,14 @@ from time import perf_counter
 from uav.uav import UAV
 from geometry.discrete_grid import DiscreteGrid
 from astar.astar import AStar
+from astar.astar3D import AStar3D
+from geometry.grid_map3D import GridMap3D
 
 class PathPlanner:
     def __init__(self, goal, uav_id=1) -> None:
         self.goal = goal
         self.uav_id = uav_id
-        self.dg = DiscreteGrid(resolution=0.5)
+        self.dg = DiscreteGrid(resolution=1.0)
         self.uav = UAV(uav_id)
         self.start = None
 
@@ -48,7 +50,9 @@ class PathPlanner:
         uav_position = self.uav.uav_info.get_uav_position()
         self.start = (uav_position.x, uav_position.y, uav_position.z)
 
+
         # get obstacles...
+        '''
         obstacles = set()
         point_cloud_2 = self.uav.uav_info.get_point_cloud_2()
         for p in pc2.read_points(point_cloud_2, field_names=('x', 'y', 'z'), skip_nans=True):
@@ -60,13 +64,26 @@ class PathPlanner:
             ]
             obstacles.add(self.dg.continuous_to_discrete(obstacle))
 
-        # astar = AStar(grid_map=self.discrete_grid, obstacles=obstacles)
         astar = AStar(obstacles=obstacles)
         path = astar.find_path(
             start=self.start,
             goal=self.goal
         )
+        obstacles = set()
+        point_cloud_2 = self.uav.uav_info.get_point_cloud_2()
+        for p in pc2.read_points(point_cloud_2, field_names=('x', 'y', 'z'), skip_nans=True):
+            x, y, z = p
+            obstacle = [
+                z + uav_position.x,
+                -x + uav_position.y,
+                y + uav_position.z
+            ]
+            obstacles.add(self.dg.continuous_to_discrete(obstacle))
 
-        # print('path: ', path)
+        start = self.dg.continuous_to_discrete((uav_position.x, uav_position.y, uav_position.z))
+        path = AStar3D(list(obstacles)).find_path(start, self.goal)
+        '''
+        path = []
+        print('path: ', path)
         rospy.loginfo(f'[PathPlanner]: O planejamento levou {round(perf_counter() - time_start, 5)}s para ser concluído...')        
         self.uav.movements.goto_trajectory(path)

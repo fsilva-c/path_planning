@@ -15,3 +15,4 @@ class DiscreteGrid:
             (grid_pos[1]) * self.resolution,
             (grid_pos[2]) * self.resolution,
         )
+    
