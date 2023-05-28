@@ -1,7 +1,7 @@
 name: simulation
 root: ./
-pre_window: export UAV_NAME=uav1; export RUN_TYPE=simulation; export UAV_TYPE=f450; export WORLD_NAME=simulation_local; export SENSORS="garmin_down"; export ODOMETRY_TYPE="gps"
 startup_window: goto
+pre_window: export UAV_NAME=uav1; export RUN_TYPE=simulation; export UAV_TYPE=f450; export SENSORS="garmin_down"; export WORLD_FILE=./custom_configs/world.yaml; export ODOMETRY_TYPE="gps"
 windows:
   - roscore:
       layout: tiled
@@ -11,19 +11,34 @@ windows:
       layout: tiled
       panes:
         - waitForRos; roslaunch mrs_simulation simulation.launch gui:=true world_name:=forest
-        - waitForOdometry; gz camera -c gzclient_camera -f ${UAV_NAME}; history -s gz camera -c gzclient_camera -f ${UAV_NAME}
+        - waitForOdometry; gz camera -c gzclient_camera -f uav1; history -s gz camera -c gzclient_camera -f uav1
   - status:
       layout: tiled
       panes:
         - waitForSimulation; roslaunch mrs_uav_status status.launch
   - spawn:
-      layout: tiled--enable-realsense-front
-      panes:
-        - waitForSimulation; rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-realsense-down --enable-realsense-front --pos_file `pwd`/pos.yaml"
-  - control:
       layout: tiled
       panes:
-        - waitForOdometry; roslaunch mrs_uav_general core.launch config_uav_manager:=./custom_configs/uav_manager.yaml
+        # - waitForSimulation; rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-ouster --ouster-model OS0-128 --use-gpu-ray --pos 0 0 1.0 0"
+        - waitForSimulation; rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --use-gpu-ray --enable-realsense-front --pos 0 0 1.0 0 "
+        # - waitForSimulation; rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-realsense-down --enable-realsense-front --enable-ouster --ouster-model OS0-128 --use-gpu-ray --pos 0 0 1.0 0"
+  - control:
+       layout: tiled
+       panes:
+         - waitForOdometry; roslaunch mrs_uav_general core.launch config_odometry:=./custom_configs/odometry.yaml config_constraint_manager:=./custom_configs/constraint_manager.yaml
+  - mapplan:
+      layout: tiled
+      panes:
+        - waitForOdometry; roslaunch octomap_mapping_planning mapplan.launch config_octomap:=./custom_configs/octomap.yaml config_pcl_filter_ouster:=./custom_configs/ouster_filter_mapping.yaml config_pathfinder:=./custom_configs/pathfinder.yaml config_trajectory_generation:=./custom_configs/trajectory_generation.yaml config_pcl_filter_rs_front:=./custom_configs/rs_front_filter.yaml config_pcl_filter_rs_down:=./custom_configs/rs_down_filter.yaml
+  - map:
+      layout: tiled
+      panes:
+        - 'history -s rosservice call /uav1/octomap_server/save_map example'
+        - 'history -s rosservice call /uav1/octomap_server/load_map example'
+  - goto:
+      layout: tiled
+      panes:
+        - 'history -s roslaunch fs_path_planning start_astart_mission.launch'
   - takeoff:
       layout: tiled
       panes:
@@ -32,20 +47,16 @@ windows:
           rosservice call /$UAV_NAME/mavros/cmd/arming 1;
           sleep 2;
           rosservice call /$UAV_NAME/mavros/set_mode 0 offboard'
-  - goto:
-      layout: tiled
-      panes:
-        - 'history -s roslaunch fs_path_planning start_astart_mission.launch'
   - rviz:
       layout: tiled
       panes:
-        - waitForControl; roslaunch mrs_uav_testing rviz.launch
+        - waitForControl; rosrun rviz rviz -d ./rviz.rviz
         - waitForControl; roslaunch mrs_rviz_plugins load_robot.launch
   - easy_control:
       layout: tiled
       panes:
         - waitForControl; waitForControl; roslaunch mrs_uav_general logitech_joystick.launch
-        - waitForControl; waitForControl; roslaunch mrs_rviz_plugins rviz_interface.launch
+        - waitForControl; waitForControl; roslaunch mrs_rviz_plugins rviz_interface.launch reference_service_name:='pathfinder/reference'
   - layout:
       layout: tiled
       panes:

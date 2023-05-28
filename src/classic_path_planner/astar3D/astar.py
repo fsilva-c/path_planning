@@ -1,10 +1,10 @@
 import math
 import heapq
+import numpy as np
 from itertools import product
 from geometry.geometry import Geometry
 from geometry.discrete_grid import DiscreteGrid
 from scipy.spatial import KDTree
-import numpy as np
 
 class AStar3D:
     def __init__(self, obstacles) -> None:

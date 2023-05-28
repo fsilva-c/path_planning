@@ -5,21 +5,20 @@ from geometry.discrete_grid import DiscreteGrid2D
 from scipy.spatial import KDTree
 
 class AStar:
-    def __init__(self, threshold: float, dg: DiscreteGrid2D, obstacles: list) -> None:
-        self.threshold = threshold
+    def __init__(
+            self, 
+            threshold: float, 
+            dg: DiscreteGrid2D, 
+            obstacles: list
+        ) -> None:
+        self.threshold: list = threshold
         self.dg = dg
         self.obstacles = obstacles
         self.kd_tree = KDTree(self.obstacles)
 
     def heuristic(self, a: list, b: list) -> float:
-        '''
-        return abs(a[0] - b[0]) + abs(a[1] - b[1])
-        '''
-        x1, y1 = a
-        x2, y2 = b
-        dx = x2 - x1
-        dy = y2 - y1
-        return math.sqrt(dx**2 + dy**2)
+        return Geometry.manhattan_distance(a, b)
+        # return Geometry.euclidean_distance(a, b)
 
     def is_valid(self, node: list) -> bool:
         distances, _ = self.kd_tree.query(self.dg.discrete_to_continuous(node), k=1)

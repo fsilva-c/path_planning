@@ -1,14 +1,11 @@
 import rospy
 import math
-import numpy as np
 from geometry.geometry import Geometry
 import sensor_msgs.point_cloud2 as pc2
 from time import perf_counter
 from uav.uav import UAV
 from geometry.discrete_grid import DiscreteGrid
-from astar.astar3D import AStar3D
-# from astar.astar3D_GridMap3D import AStar3D
-from geometry.grid_map3D import GridMap3D
+from classic_path_planner.astar3D.astar import AStar3D
 
 class StatePlanner:
     PLANNING = 1
@@ -76,23 +73,6 @@ class PathPlanner:
         self.start = (uav_position.x, uav_position.y, uav_position.z)
 
         self.set_heading()
-
-        '''
-        AStar3D Gridmap...
-        gm3d = GridMap3D(
-            resolution=1.0,
-            dimension=(100, 100, 100),
-            center=self.start
-        )
-
-        point_cloud_2 = self.uav.uav_info.get_point_cloud_2()
-        for p in pc2.read_points(point_cloud_2, field_names=('x', 'y', 'z'), skip_nans=True):
-            x, y, z = p
-            gm3d.insert_obstacle(
-                np.array([z  + uav_position.x, -x  + uav_position.y, y  + uav_position.z]))
-
-        path = AStar3D(gm3d).find_path(start=self.start, goal=self.goal)
-        '''
 
         rospy.loginfo('[PathPlanner]: Find Path...')
         obstacles = set()
