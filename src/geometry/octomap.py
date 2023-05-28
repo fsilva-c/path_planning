@@ -1,2 +1,0 @@
-class OctoMap:
-    pass
