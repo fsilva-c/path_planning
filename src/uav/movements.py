@@ -1,5 +1,5 @@
 import rospy
-import numpy as np
+from geometry.geometry import Geometry
 from uav.uav_info import UAVInfo
 from mrs_msgs.srv import ReferenceStampedSrv, PathSrv, String, Vec1
 from std_srvs.srv import Trigger
@@ -7,12 +7,12 @@ from mrs_msgs.msg import Reference
 from geometry_msgs.msg import Point
 
 class Movements:
-    def __init__(self, uav_id=1) -> None:
+    def __init__(self, uav_id: int=1) -> None:
         self.uav_id = uav_id
 
         self.uav_info = UAVInfo(uav_id)
 
-    def goto(self, target, heading=0.0) -> None:
+    def goto(self, target: list, heading: float=0.0) -> None:
         rospy.loginfo('GOTO uav...')
 
         srv_name = f'/uav{self.uav_id}/control_manager/reference'
@@ -34,7 +34,7 @@ class Movements:
         while not self.in_target(target):
             rospy.sleep(0.1)
 
-    def set_velocity(self, mode):
+    def set_velocity(self, mode) -> None:
         srv_name = f'/uav{self.uav_id}/constraint_manager/set_constraints'
         rospy.wait_for_service(srv_name)
         srv_set_mode = rospy.ServiceProxy(srv_name, String)
@@ -107,7 +107,5 @@ class Movements:
         if len(target) < 3: # se goto3D -> ponto envolve o eixo z
             target.append(uav_position.z)
 
-        point_dist = np.linalg.norm(
-            np.array([target[0], target[1], target[2]]) - np.array([uav_position.x, uav_position.y, uav_position.z])
-        )
-        return point_dist <= 0.3 # 30 cm
+        # 30 cm
+        return Geometry.euclidean_distance(target, [[uav_position.x, uav_position.y, uav_position.z]]) <= 0.3

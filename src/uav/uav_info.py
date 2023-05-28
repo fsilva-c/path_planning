@@ -1,7 +1,6 @@
 import rospy
 from sensor_msgs.msg import Range, LaserScan, PointCloud, PointCloud2
 from mrs_msgs.msg import PositionCommand, Float64Stamped, ControlManagerDiagnostics
-from octomap_msgs.msg import Octomap
 
 class UAVInfo:
     def __init__(self, uav_id) -> None:
@@ -14,7 +13,6 @@ class UAVInfo:
         self.laser_scan = LaserScan()
         self.point_cloud = PointCloud()
         self.point_cloud_2 = PointCloud2()
-        self.octomap = Octomap()
 
         topic_prefix = f'/uav{self.uav_id}'
         rospy.Subscriber(f'{topic_prefix}/control_manager/position_cmd', PositionCommand, self.callback_position)
@@ -24,7 +22,6 @@ class UAVInfo:
         rospy.Subscriber(f'{topic_prefix}/rplidar/scan', LaserScan, self.callback_laser_scan)
         rospy.Subscriber(f'{topic_prefix}/hector_mapping/slam_cloud', PointCloud, self.callback_point_cloud)
         rospy.Subscriber(f'{topic_prefix}/pcl_filter_rs_front/points_processed', PointCloud2, self.callback_point_cloud_2)
-        rospy.Subscriber(f'{topic_prefix}/octomap_server/octomap_local_full', Octomap, self.callback_octomap)
 
     def callback_position(self, data):
         self.uav_pos = data
@@ -47,9 +44,6 @@ class UAVInfo:
     def callback_point_cloud_2(self, msg):
         self.point_cloud_2 = msg
 
-    def callback_octomap(self, msg):
-        self.octomap = msg
-
     def get_uav_position(self):
         return self.uav_pos.position
 
@@ -71,5 +65,3 @@ class UAVInfo:
     def get_point_cloud_2(self):
         return self.point_cloud_2
     
-    def get_octomap(self):
-        return self.octomap
