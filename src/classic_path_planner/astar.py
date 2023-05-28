@@ -1,24 +1,31 @@
 import math
+import numpy as np
 from geometry.geometry import Geometry
+from geometry.discrete_grid import DiscreteGrid2D
+from scipy.spatial import KDTree
 
 class AStar:
-    def __init__(self, grid_map):
-        self.grid_map = grid_map
+    def __init__(self, threshold: float, dg: DiscreteGrid2D, obstacles: list) -> None:
+        self.threshold = threshold
+        self.dg = dg
+        self.obstacles = obstacles
+        self.kd_tree = KDTree(self.obstacles)
 
-    def heuristic(self, a, b):
-        return Geometry.manhattan_distance(a, b) * self.grid_map.resolution
-        # return Geometry.euclidean_distance(a, b) * self.grid_map.resolution
+    def heuristic(self, a: list, b: list) -> float:
+        '''
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+        '''
+        x1, y1 = a
+        x2, y2 = b
+        dx = x2 - x1
+        dy = y2 - y1
+        return math.sqrt(dx**2 + dy**2)
 
-    def is_valid(self, node):
-        x, y = node
-        grid_ind = self.grid_map.calc_grid_index_from_xy_index(x, y)
-        return 0 <= grid_ind < self.grid_map.ndata
+    def is_valid(self, node: list) -> bool:
+        distances, _ = self.kd_tree.query(self.dg.discrete_to_continuous(node), k=1)
+        return np.all(distances >= self.threshold)
 
-    def is_obstacle(self, node):
-        x, y = node
-        return self.grid_map.check_occupied_from_xy_index(x, y)
-
-    def neighbors(self, node):
+    def neighbors(self, node: list) -> list:
         x, y = node
         neighbors = []
         directions = [
@@ -27,13 +34,13 @@ class AStar:
         
         for dx, dy in directions:
             neighbor = (x + dx, y + dy)
-            if self.is_valid(neighbor) and not self.is_obstacle(neighbor):
+            if self.is_valid(neighbor):
                 neighbors.append(neighbor)
         return neighbors
 
-    def find_path(self, start, goal):
-        start = self.grid_map.get_xy_index_from_xy_pos(start[0], start[1])
-        goal = self.grid_map.get_xy_index_from_xy_pos(goal[0], goal[1])
+    def find_path(self, start: list, goal: list) -> list:
+        start = self.dg.continuous_to_discrete(start[:2])
+        goal = self.dg.continuous_to_discrete(goal[:2])
 
         open_set = [start]
         came_from = {}
@@ -59,13 +66,13 @@ class AStar:
                     if neighbor not in open_set:
                         open_set.append(neighbor)
 
-        return None
+        return []
 
-    def _reconstruct_path(self, came_from, current):
+    def _reconstruct_path(self, came_from: dict, current: list) -> list:
         path = [current]
         while current in came_from:
             current = came_from[current]
-            x, y = current
-            path.append(self.grid_map.get_xy_pos_from_xy_index(x, y))
-        path[0] = self.grid_map.get_xy_pos_from_xy_index(path[0][0], path[0][1])
+            path.append(self.dg.discrete_to_continuous(current))
+        path[0] = self.dg.discrete_to_continuous(path[0])
         return path[::-1]
+    

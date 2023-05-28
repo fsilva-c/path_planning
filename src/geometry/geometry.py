@@ -3,13 +3,26 @@ import numpy as np
 
 class Geometry:
     @staticmethod
-    def euclidean_distance(p1, p2):
-        x1, y1, z1 = p1
-        x2, y2, z2 = p2
+    def euclidean_distance(a, b):
+        distances = sum([(x2 - x1) ** 2 for x1, x2 in zip(a, b)])
+        return math.sqrt(distances)
+
+    # @staticmethod
+    # def euclidean_distance(p1, p2):
+    #     x1, y1, z1 = p1
+    #     x2, y2, z2 = p2
+    #     dx = x2 - x1
+    #     dy = y2 - y1
+    #     dz = z2 - z1
+    #     return math.sqrt(dx**2 + dy**2 + dz**2)
+    
+    @staticmethod
+    def euclidean_distance2D(p1, p2):
+        x1, y1 = p1
+        x2, y2 = p2
         dx = x2 - x1
         dy = y2 - y1
-        dz = z2 - z1
-        return math.sqrt(dx**2 + dy**2 + dz**2)
+        return math.sqrt(dx**2 + dy**2)
     
     @staticmethod
     def norm(a, b):

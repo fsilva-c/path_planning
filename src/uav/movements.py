@@ -58,7 +58,7 @@ class Movements:
         srv_set_mode(req)
         dt = 0.1
         while abs(self.uav_info.get_heading() - heading) >= dt:
-            pass
+            rospy.sleep(0.1)
 
     def goto_trajectory(self, trajectory, fly_now=True, wait=False) -> None:
         rospy.loginfo('GOTO trajectory uav...')

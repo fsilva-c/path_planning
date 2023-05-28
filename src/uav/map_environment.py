@@ -1,6 +1,8 @@
 import math
 import struct
 import numpy as np
+from geometry.laser_geometry import LaserProjection
+import sensor_msgs.point_cloud2 as pc2
 from geometry.geometry import Geometry
 from uav.uav_info import UAVInfo
 
@@ -33,14 +35,23 @@ class MapEnvironment:
     
     def get_obstacles(self, max_range=MAX_RANGE):
         laser_scan = self.uav_info.get_laser_scan()
-        obstacles = []
+        laser_projection = LaserProjection()
+        pc2_msg = laser_projection.projectLaser(laser_scan)
+        for p in pc2.read_points(pc2_msg, field_names=('x', 'y'), skip_nans=True):
+            x, y = p
+            yield [x, y]
+
+        '''
+        # obstacles = []
         for i, range in enumerate(laser_scan.ranges):
             if range != math.inf and range <= max_range:
                 angle = laser_scan.angle_min + i * laser_scan.angle_increment
                 x = range * math.cos(angle)
                 y = range * math.sin(angle)
-                obstacles.append([x, y])
-        return obstacles
+                yield [x, y]
+                # obstacles.append([x, y])
+        # return obstacles
+        '''
     
     def unpack_point_cloud_2(self):
         cloud = self.uav_info.get_point_cloud_2()
