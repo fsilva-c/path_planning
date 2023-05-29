@@ -60,7 +60,6 @@ class AStar3D:
                     g_score[neighbor] = tentative_g_score
                     f_score[neighbor] = tentative_g_score + self.heuristic(neighbor, goal)
 
-                    # Check if neighbor is already in the open set
                     neighbor_in_open_set = False
                     for _, node in open_set:
                         if node == neighbor:

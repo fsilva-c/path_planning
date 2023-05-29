@@ -6,7 +6,7 @@ from uav.uav import UAV
 from classic_path_planner.path_planner import PathPlanner
 
 uav = UAV(uav_id=1)
-pp = PathPlanner(goal=(-26, 16))
+pp = PathPlanner(goal=(-32, 30))
 
 def start_astar_mission():
     rospy.init_node('astar_mission', anonymous=True)

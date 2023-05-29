@@ -42,9 +42,9 @@ class PathPlanner:
                 self.current_state = StatePlanner.MOVING
             
             elif self.current_state == StatePlanner.MOVING:
-                # if self.has_obstacles_in_current_path():
                 if self.distance_to_start() > 8.0:
-                    self.current_state = StatePlanner.OBSTACLE_FOUND
+                    if self.has_obstacles_in_current_path():
+                        self.current_state = StatePlanner.OBSTACLE_FOUND
                 if self.uav.movements.in_target(list(self.goal)):
                     self.current_state = StatePlanner.GOAL_REACHED
 
@@ -65,8 +65,9 @@ class PathPlanner:
         return obstacles
 
     def has_obstacles_in_current_path(self) -> bool:
+        obstacles = self.obstacles()
         for point in self.current_path:
-            for obstacle in self.obstacles():
+            for obstacle in obstacles:
                 if Geometry.euclidean_distance(point, obstacle) < 0.4:
                     return True
         return False
@@ -89,26 +90,26 @@ class PathPlanner:
             obstacles=list(self.obstacles())
         ).find_path(start=self.start, goal=self.goal)
 
-        path = self.remove_collinear_points(path)
         self.current_path = path
+        path = self.remove_collinear_points(path)
         path.append(self.goal)
         # print(path)
         rospy.loginfo('[PathPlanner]: Caminho encontrado...')
         rospy.loginfo(f'[PathPlanner]: O planejamento levou {round(perf_counter() - time_start, 5)}s para ser concluído...')
-        self.uav.movements.goto_trajectory(path, fly_now=True)
+        self.uav.movements.goto_trajectory(path)
 
     def remove_collinear_points(self, original_path: list) -> list:
-        new_path = []
-        length = len(original_path) - 2
-        new_path.append(original_path[0])
+        new_path = [original_path[0]]
+        for i in range(len(original_path) - 2):
+            p1 = original_path[i]
+            p2 = original_path[i + 1]
+            p3 = original_path[i + 2]
 
-        for i in range(length):
-            distance13 = Geometry.euclidean_distance(original_path[i + 2], original_path[i])
-            distance12 = Geometry.euclidean_distance(original_path[i + 1], original_path[i])
-            distance23 = Geometry.euclidean_distance(original_path[i + 2], original_path[i + 1])
-            if abs(distance13 - distance12 - distance23) < 0.001:
-                continue
-            else:
-                new_path.append(original_path[i + 1])
+            distance13 = Geometry.euclidean_distance(p3, p1)
+            distance12 = Geometry.euclidean_distance(p2, p1)
+            distance23 = Geometry.euclidean_distance(p3, p2)
+
+            if abs(distance13 - distance12 - distance23) >= 0.001:
+                new_path.append(p2)
 
         return new_path

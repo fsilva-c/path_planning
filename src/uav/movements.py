@@ -108,4 +108,4 @@ class Movements:
             target.append(uav_position.z)
 
         # 30 cm
-        return Geometry.euclidean_distance(target, [[uav_position.x, uav_position.y, uav_position.z]]) <= 0.3
+        return Geometry.euclidean_distance(target, [uav_position.x, uav_position.y, uav_position.z]) <= 0.3

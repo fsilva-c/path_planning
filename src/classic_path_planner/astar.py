@@ -1,4 +1,5 @@
 import math
+import heapq
 import numpy as np
 from geometry.geometry import Geometry
 from geometry.discrete_grid import DiscreteGrid2D
@@ -26,33 +27,26 @@ class AStar:
 
     def neighbors(self, node: list) -> list:
         x, y = node
-        neighbors = []
         directions = [
             (0, 1), (0, -1), (1, 0), (-1, 0),
             (1, 1), (1, -1), (-1, 1), (-1, -1)]
-        
-        for dx, dy in directions:
-            neighbor = (x + dx, y + dy)
-            if self.is_valid(neighbor):
-                neighbors.append(neighbor)
-        return neighbors
+        return [(x + dx, y + dy) for dx, dy in directions if self.is_valid((x + dx, y + dy))]
 
     def find_path(self, start: list, goal: list) -> list:
         start = self.dg.continuous_to_discrete(start[:2])
         goal = self.dg.continuous_to_discrete(goal[:2])
 
-        open_set = [start]
+        open_set = []
+        heapq.heappush(open_set, (0, start))
         came_from = {}
         g_score = {start: 0}
         f_score = {start: self.heuristic(start, goal)}
 
         while open_set:
-            current = min(open_set, key=lambda node: f_score.get(node, math.inf))
+            _, current = heapq.heappop(open_set)
 
             if current == goal:
                 return self._reconstruct_path(came_from, current)
-
-            open_set.remove(current)
 
             for neighbor in self.neighbors(current):
                 tentative_g_score = g_score[current] + self.heuristic(current, neighbor)
@@ -62,11 +56,9 @@ class AStar:
                     g_score[neighbor] = tentative_g_score
                     f_score[neighbor] = tentative_g_score + self.heuristic(neighbor, goal)
 
-                    if neighbor not in open_set:
-                        open_set.append(neighbor)
-
+                    heapq.heappush(open_set, (f_score[neighbor], neighbor))
         return []
-
+    
     def _reconstruct_path(self, came_from: dict, current: list) -> list:
         path = [current]
         while current in came_from:
