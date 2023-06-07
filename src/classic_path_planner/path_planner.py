@@ -1,6 +1,5 @@
 import rospy
 import math
-import sensor_msgs.point_cloud2 as pc2
 from classic_path_planner.astar import AStar
 from time import perf_counter
 from uav.uav import UAV
