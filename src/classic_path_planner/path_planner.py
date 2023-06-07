@@ -1,9 +1,11 @@
 import rospy
+import math
+import sensor_msgs.point_cloud2 as pc2
 from classic_path_planner.astar import AStar
 from time import perf_counter
 from uav.uav import UAV
 from geometry.geometry import Geometry
-from geometry.discrete_grid import DiscreteGrid2D
+from geometry.discrete_grid import DiscreteGrid
 
 class StatePlanner:
     PLANNING = 1
@@ -22,8 +24,7 @@ class PathPlanner:
         self.goal = goal
         self.uav = UAV(uav_id)
         self.threshold = threshold
-        self.resolution = resolution
-        self.dg = DiscreteGrid2D(0.5)
+        self.dg = DiscreteGrid(resolution)
         self.current_state = StatePlanner.PLANNING
         self.current_path = []
         self.start = []
@@ -33,7 +34,7 @@ class PathPlanner:
 
         rospy.loginfo('[PathPlanner]: Start Path Planning...')
         rospy.loginfo(
-            f'[PathPlanner]: Start {uav_position.x, uav_position.y}; Goal: {self.goal[0], self.goal[1]}...'  # noqa: E501
+            f'[PathPlanner]: Start {uav_position.x, uav_position.y, uav_position.z}; Goal: {self.goal}...'  # noqa: E501
         )
 
         while self.current_state != StatePlanner.GOAL_REACHED:
@@ -42,9 +43,9 @@ class PathPlanner:
                 self.current_state = StatePlanner.MOVING
             
             elif self.current_state == StatePlanner.MOVING:
-                if self.distance_to_start() > 8.0:
-                    if self.has_obstacles_in_current_path():
-                        self.current_state = StatePlanner.OBSTACLE_FOUND
+                # if self.distance_to_start() > 8.0:
+                if self.has_obstacles_in_current_path():
+                    self.current_state = StatePlanner.OBSTACLE_FOUND
                 if self.uav.movements.in_target(list(self.goal)):
                     self.current_state = StatePlanner.GOAL_REACHED
 
@@ -55,61 +56,60 @@ class PathPlanner:
 
         rospy.loginfo('[PathPlanner]: Finalizado Path Planning...')
 
-    def obstacles(self) -> set:
+    def obstacles(self) -> list:
         uav_position = self.uav.uav_info.get_uav_position()
-        obstacles = set()
-        for p in self.uav.map_environment.get_obstacles():
-            x, y = p
-            point = uav_position.x + x, uav_position.y + y
-            obstacles.add(point)
+        obstacles = []
+        obstacles.extend(
+            (z  + uav_position.x, -x  + uav_position.y, y  + uav_position.z) 
+            for x, y, z in self.uav.map_environment.get_obstacles_realsense())
+        obstacles.extend(
+            (uav_position.x + x, uav_position.y + y, uav_position.z) 
+            for x, y in self.uav.map_environment.get_obstacles_rplidar())
         return obstacles
 
     def has_obstacles_in_current_path(self) -> bool:
         obstacles = self.obstacles()
-        for point in self.current_path:
-            for obstacle in obstacles:
-                if Geometry.euclidean_distance(point, obstacle) < 0.4:
-                    return True
-        return False
+        min_distance = 0.4
+        return any(
+            Geometry.euclidean_distance(point, obstacle) < min_distance
+            for point in self.current_path
+            for obstacle in obstacles
+        )
 
     def distance_to_start(self) -> float:
         uav_position = self.uav.uav_info.get_uav_position()
-        return Geometry.norm(self.start, [uav_position.x, uav_position.y, uav_position.z])
+        return Geometry.euclidean_distance(self.start, [uav_position.x, uav_position.y, uav_position.z])
+    
+    def set_heading(self):
+        # gira o drone pra frente do alvo...
+        rospy.loginfo('[PathPlanner]: Set Heading...')
+        uav_position = self.uav.uav_info.get_uav_position()
+        dx = self.goal[0] - uav_position.x
+        dy = self.goal[1] - uav_position.y
+        ref_heading = math.atan2(dy, dx)
+        self.uav.movements.set_heading(ref_heading)
 
     def path_plan(self) -> None:
         rospy.loginfo('[PathPlanner]: Path Planning...')
-        time_start = perf_counter()
 
         uav_position = self.uav.uav_info.get_uav_position()
         self.start = (uav_position.x, uav_position.y, uav_position.z)
 
+        self.set_heading()
+
+        time_start = perf_counter()
         rospy.loginfo('[PathPlanner]: Encontrando o caminho...')
         path = AStar(
             threshold=self.threshold,
             dg=self.dg,
-            obstacles=list(self.obstacles())
+            obstacles=self.obstacles()
         ).find_path(start=self.start, goal=self.goal)
 
-        self.current_path = path
-        path = self.remove_collinear_points(path)
         path.append(self.goal)
+        self.current_path = path
+        # path = Geometry.apply_cubic_spline(path)
+        # path = Geometry.remove_collinear_points(path)
         # print(path)
         rospy.loginfo('[PathPlanner]: Caminho encontrado...')
         rospy.loginfo(f'[PathPlanner]: O planejamento levou {round(perf_counter() - time_start, 5)}s para ser concluído...')
         self.uav.movements.goto_trajectory(path)
-
-    def remove_collinear_points(self, original_path: list) -> list:
-        new_path = [original_path[0]]
-        for i in range(len(original_path) - 2):
-            p1 = original_path[i]
-            p2 = original_path[i + 1]
-            p3 = original_path[i + 2]
-
-            distance13 = Geometry.euclidean_distance(p3, p1)
-            distance12 = Geometry.euclidean_distance(p2, p1)
-            distance23 = Geometry.euclidean_distance(p3, p2)
-
-            if abs(distance13 - distance12 - distance23) >= 0.001:
-                new_path.append(p2)
-
-        return new_path

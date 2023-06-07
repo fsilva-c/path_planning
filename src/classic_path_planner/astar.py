@@ -1,69 +1,89 @@
-import math
 import heapq
-import numpy as np
 from geometry.geometry import Geometry
-from geometry.discrete_grid import DiscreteGrid2D
+from geometry.discrete_grid import DiscreteGrid
 from scipy.spatial import KDTree
+
+class Node:
+    def __init__(self, position):
+        self.position = position
+        self.g = 0  # custo do caminho do nó inicial até este nó...
+        self.h = 0  # heurística...
+        self.f = 0  # f = g + h...
+        self.parent = None
+
+    def __lt__(self, other):
+        return self.f < other.f
 
 class AStar:
     def __init__(
-            self, 
+            self,
             threshold: float, 
-            dg: DiscreteGrid2D, 
+            dg: DiscreteGrid, 
             obstacles: list
         ) -> None:
-        self.threshold: list = threshold
+        self.threshold = threshold
         self.dg = dg
-        self.obstacles = obstacles
-        self.kd_tree = KDTree(self.obstacles)
+        self.kd_tree = KDTree(obstacles)
 
-    def heuristic(self, a: list, b: list) -> float:
-        return Geometry.manhattan_distance(a, b)
-        # return Geometry.euclidean_distance(a, b)
+    def heuristic(self, node, goal) -> float:
+        # return Geometry.euclidean_distance(node.position, goal.position)
+        return Geometry.manhattan_distance(node.position, goal.position)
 
     def is_valid(self, node: list) -> bool:
-        distances, _ = self.kd_tree.query(self.dg.discrete_to_continuous(node), k=1)
-        return np.all(distances >= self.threshold)
+        distance, _ = self.kd_tree.query(self.dg.discrete_to_continuous(node), k=1)
+        return distance >= self.threshold
 
-    def neighbors(self, node: list) -> list:
-        x, y = node
-        directions = [
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (1, 1), (1, -1), (-1, 1), (-1, -1)]
-        return [(x + dx, y + dy) for dx, dy in directions if self.is_valid((x + dx, y + dy))]
+    def get_neighbours(self, node: Node):
+        x, y, z = node.position
+        neighbours = []
+        for i in range(-1, 2):
+            for j in range(-1, 2):
+                for k in range(-1, 2):
+                    if i == 0 and j == 0 and k == 0:
+                        continue
+                    new_node = Node((x + i, y + j, z + k))
+                    if self.is_valid(new_node.position):
+                        neighbours.append(new_node)
+        return neighbours
 
-    def find_path(self, start: list, goal: list) -> list:
-        start = self.dg.continuous_to_discrete(start[:2])
-        goal = self.dg.continuous_to_discrete(goal[:2])
+    def find_path(self, start, goal):
+        start_node = Node(self.dg.continuous_to_discrete(start))
+        goal_node = Node(self.dg.continuous_to_discrete(goal))
 
-        open_set = []
-        heapq.heappush(open_set, (0, start))
-        came_from = {}
-        g_score = {start: 0}
-        f_score = {start: self.heuristic(start, goal)}
+        open_list = []
+        closed_list = set()
 
-        while open_set:
-            _, current = heapq.heappop(open_set)
+        heapq.heappush(open_list, start_node)
 
-            if current == goal:
-                return self._reconstruct_path(came_from, current)
+        while open_list:
+            current_node = heapq.heappop(open_list)
+            closed_list.add(current_node)
 
-            for neighbor in self.neighbors(current):
-                tentative_g_score = g_score[current] + self.heuristic(current, neighbor)
+            if current_node.position == goal_node.position:
+                path = []
+                while current_node:
+                    path.append(self.dg.discrete_to_continuous(current_node.position))
+                    current_node = current_node.parent
+                path.reverse()
+                return path
 
-                if tentative_g_score < g_score.get(neighbor, math.inf):
-                    came_from[neighbor] = current
-                    g_score[neighbor] = tentative_g_score
-                    f_score[neighbor] = tentative_g_score + self.heuristic(neighbor, goal)
+            neighbours = self.get_neighbours(current_node)
+            for neighbour in neighbours:
+                if neighbour in closed_list:
+                    continue
 
-                    heapq.heappush(open_set, (f_score[neighbor], neighbor))
+                g = current_node.g + 1
+                if neighbour in open_list:
+                    if g < neighbour.g:
+                        open_list.remove(neighbour)
+                    else:
+                        continue
+
+                neighbour.g = g
+                neighbour.h = self.heuristic(neighbour, goal_node)
+                neighbour.f = g + neighbour.h
+                neighbour.parent = current_node
+                heapq.heappush(open_list, neighbour)
+
         return []
-    
-    def _reconstruct_path(self, came_from: dict, current: list) -> list:
-        path = [current]
-        while current in came_from:
-            current = came_from[current]
-            path.append(self.dg.discrete_to_continuous(current))
-        path[0] = self.dg.discrete_to_continuous(path[0])
-        return path[::-1]
     

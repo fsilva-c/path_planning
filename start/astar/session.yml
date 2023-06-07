@@ -19,7 +19,7 @@ windows:
   - spawn:
       layout: tiled
       panes:
-        - waitForSimulation; rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-rplidar --enable-bluefox-camera --pos_file `pwd`/pos.yaml"
+        - waitForSimulation; rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-rplidar --enable-realsense-front --pos_file `pwd`/pos.yaml"
   - control:
       layout: tiled
       panes:
@@ -32,6 +32,10 @@ windows:
           rosservice call /$UAV_NAME/mavros/cmd/arming 1;
           sleep 2;
           rosservice call /$UAV_NAME/mavros/set_mode 0 offboard'
+  - mapplan:
+      layout: tiled
+      panes:
+        - waitForOdometry; roslaunch octomap_mapping_planning mapplan.launch config_octomap:=./custom_configs/octomap.yaml config_pcl_filter_rs_front:=./custom_configs/rs_front_filter.yaml
   - goto:
       layout: tiled
       panes:
@@ -39,6 +43,7 @@ windows:
   - rviz:
       layout: tiled
       panes:
+        - waitForControl; rosrun rviz rviz -d ./rviz.rviz
         - waitForControl; roslaunch mrs_uav_testing rviz.launch
         - waitForControl; roslaunch mrs_rviz_plugins load_robot.launch
   - easy_control:

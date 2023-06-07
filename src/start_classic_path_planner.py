@@ -6,7 +6,7 @@ from uav.uav import UAV
 from classic_path_planner.path_planner import PathPlanner
 
 uav = UAV(uav_id=1)
-pp = PathPlanner(goal=(-32, 30))
+pp = PathPlanner(goal=(-22, 9, 3))
 
 def start_astar_mission():
     rospy.init_node('astar_mission', anonymous=True)
@@ -15,7 +15,7 @@ def start_astar_mission():
     rospy.sleep(5.0)
 
     rospy.loginfo('Aguardando carregamento dos módulos do controlador de voo...')
-    while rospy.get_time() <= 25.0 or uav.uav_info.get_active_tracker() == 'NullTracker':
+    while rospy.get_time() <= 25.0: # or uav.uav_info.get_active_tracker() == 'NullTracker':
         rospy.sleep(0.1)
 
     rospy.loginfo('Iniciando os testes...')

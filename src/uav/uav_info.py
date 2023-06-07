@@ -1,5 +1,6 @@
 import rospy
 from sensor_msgs.msg import Range, LaserScan, PointCloud, PointCloud2
+from mavros_msgs.msg import State
 from mrs_msgs.msg import PositionCommand, Float64Stamped, ControlManagerDiagnostics
 
 class UAVInfo:
@@ -9,6 +10,7 @@ class UAVInfo:
         self.uav_pos = PositionCommand()
         self.diagnostics = ControlManagerDiagnostics()
         self.heading = Float64Stamped()
+        self.state = State()
         self.garmin = Range()
         self.laser_scan = LaserScan()
         self.point_cloud = PointCloud()
@@ -18,23 +20,27 @@ class UAVInfo:
         rospy.Subscriber(f'{topic_prefix}/control_manager/position_cmd', PositionCommand, self.callback_position)
         rospy.Subscriber(f'{topic_prefix}/control_manager/heading', Float64Stamped, self.callback_heading)
         rospy.Subscriber(f'{topic_prefix}/garmin/range', Range, self.callback_garmin)
+        rospy.Subscriber(f'{topic_prefix}/mavros/state', State, self.callback_state)
         rospy.Subscriber(f'{topic_prefix}/control_manager/diagnostics', ControlManagerDiagnostics, self.callback_diagnostics)
         rospy.Subscriber(f'{topic_prefix}/rplidar/scan', LaserScan, self.callback_laser_scan)
         rospy.Subscriber(f'{topic_prefix}/hector_mapping/slam_cloud', PointCloud, self.callback_point_cloud)
         rospy.Subscriber(f'{topic_prefix}/pcl_filter_rs_front/points_processed', PointCloud2, self.callback_point_cloud_2)
 
-    def callback_position(self, data):
-        self.uav_pos = data
+    def callback_position(self, msg):
+        self.uav_pos = msg
 
-    def callback_heading(self, data):
-        self.heading = data
+    def callback_heading(self, msg):
+        self.heading = msg
 
-    def callback_garmin(self, data):
-        self.garmin = data
+    def callback_garmin(self, msg):
+        self.garmin = msg
     
-    def callback_diagnostics(self, data):
-        self.diagnostics = data
+    def callback_diagnostics(self, msg):
+        self.diagnostics = msg
     
+    def callback_state(self, msg):
+        self.state = msg
+
     def callback_laser_scan(self, msg):
         self.laser_scan = msg
 
@@ -64,4 +70,12 @@ class UAVInfo:
 
     def get_point_cloud_2(self):
         return self.point_cloud_2
-    
+
+    def is_armed(self):
+        return self.state.armed
+
+    def get_mode(self):
+        return self.state.mode
+
+    def get_motors_status(self):
+        return self.diagnostics.motors

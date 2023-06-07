@@ -1,33 +1,17 @@
 class DiscreteGrid:
-    def __init__(self, resolution) -> None:
+    def __init__(self, resolution):
         self.resolution = resolution
 
-    def continuous_to_discrete(self, pos):
-        return (
-            int((pos[0] + self.resolution * 0.5) / self.resolution),
-            int((pos[1] + self.resolution * 0.5) / self.resolution),
-            int((pos[2] + self.resolution * 0.5) / self.resolution)
-        )
+    def discrete_to_continuous(self, discrete_coordinates):
+        x, y, z = discrete_coordinates
+        x_global = x * self.resolution
+        y_global = y * self.resolution
+        z_global = z * self.resolution
+        return x_global, y_global, z_global
 
-    def discrete_to_continuous(self, grid_pos):
-        return (
-            (grid_pos[0]) * self.resolution,
-            (grid_pos[1]) * self.resolution,
-            (grid_pos[2]) * self.resolution,
-        )
-
-class DiscreteGrid2D:
-    def __init__(self, resolution) -> None:
-        self.resolution = resolution
-
-    def continuous_to_discrete(self, pos):
-        return (
-            int((pos[0] + self.resolution * 0.5) / self.resolution),
-            int((pos[1] + self.resolution * 0.5) / self.resolution)
-        )
-
-    def discrete_to_continuous(self, grid_pos):
-        return (
-            (grid_pos[0]) * self.resolution,
-            (grid_pos[1]) * self.resolution,
-        )
+    def continuous_to_discrete(self, continuous_coordinates):
+        x_global, y_global, z_global = continuous_coordinates
+        x = int(x_global / self.resolution)
+        y = int(y_global / self.resolution)
+        z = int(z_global / self.resolution)
+        return x, y, z

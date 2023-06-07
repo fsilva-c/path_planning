@@ -1,5 +1,6 @@
 import math
 import numpy as np
+from scipy.interpolate import CubicSpline, BSpline
 
 class Geometry:
     @staticmethod
@@ -10,7 +11,32 @@ class Geometry:
     @staticmethod
     def manhattan_distance(a, b):
         return sum(abs(x - y) for x, y in zip(a,b))
+
+    @staticmethod
+    def apply_cubic_spline(path, resolution=0.1):
+        x, y, z = zip(*path)
+        cs_x = CubicSpline(np.arange(len(x)), x)
+        cs_y = CubicSpline(np.arange(len(y)), y)
+        cs_z = CubicSpline(np.arange(len(z)), z)
+        interpolated_path = []
+        t = 0.0
+        while t < len(path) - 1:
+            interpolated_point = (cs_x(t), cs_y(t), cs_z(t))
+            interpolated_path.append(interpolated_point)
+            t += resolution
+        return interpolated_path
     
     @staticmethod
-    def norm(a, b):
-        return np.linalg.norm(np.array(a) - np.array(b))
+    def remove_collinear_points(original_path: list) -> list:
+        new_path = [original_path[0]]
+        n = len(original_path)
+        for i in range(1, n - 1):
+            p1 = original_path[i - 1]
+            p2 = original_path[i]
+            p3 = original_path[i + 1]
+            if not abs(
+                (p2[1] - p1[1]) * (p3[0] - p2[0]) - (p2[0] - p1[0]) * (p3[1] - p2[1])
+            ) < 0.001:
+                new_path.append(p2)
+        new_path.append(original_path[n - 1])
+        return new_path
