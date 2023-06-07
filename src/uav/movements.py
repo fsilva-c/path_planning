@@ -151,7 +151,7 @@ class Movements:
             points.append(reference)
         
         msg_srv = PathSrv._request_class()
-        msg_srv.path.use_heading = True
+        msg_srv.path.use_heading = False
         msg_srv.path.points = points
         msg_srv.path.fly_now = fly_now
 
