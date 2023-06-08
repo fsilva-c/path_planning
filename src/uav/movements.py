@@ -87,7 +87,7 @@ class Movements:
         req = VelocityReferenceStampedSrv._request_class()
         req.reference.reference.velocity = velocity
         srv_velocity_reference(req)
-        # rospy.sleep(1.0)
+        rospy.sleep(2.0)
 
     def motors(self, status):
         srv_name = f'/uav{self.uav_id}/control_manager/motors'

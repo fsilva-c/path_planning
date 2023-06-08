@@ -82,9 +82,9 @@ class FSPPEnv(gym.Env):
         return observation
 
     def _generate_random_goal(self):
-        x_values = np.arange(-5.0, 5.5, 0.5)
-        y_values = np.arange(-5.0, 5.5, 0.5)
-        z_values = np.arange(1.5, 3.5, 0.5)
+        x_values = np.arange(-6.0, 6.0, 0.5)
+        y_values = np.arange(-6.0, 6.0, 0.5)
+        z_values = np.arange(1.5, 3.0, 0.5)
         x = np.random.choice(x_values)
         y = np.random.choice(y_values)
         z = np.random.choice(z_values)

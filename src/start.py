@@ -37,9 +37,14 @@ def start_rl_mission():
     from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
 
     env = DummyVecEnv([lambda: FSPPEnv()])
-    model = PPO('MlpPolicy', env, verbose=1)
+    model = PPO(
+        'MlpPolicy', 
+        env, 
+        n_epochs=1000,
+        verbose=1
+    )
     # model = PPO.load('PPO_training_model')
-    model.learn(total_timesteps=100000)
+    model.learn(total_timesteps=2e4)
     model.save('PPO_training_model')
 
 # start_astar_mission()
