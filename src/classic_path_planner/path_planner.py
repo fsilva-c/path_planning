@@ -36,8 +36,6 @@ class PathPlanner:
             f'[PathPlanner]: Start {uav_position.x, uav_position.y, uav_position.z}; Goal: {self.goal}...'  # noqa: E501
         )
 
-        self.set_heading()
-
         while self.current_state != StatePlanner.GOAL_REACHED:
             if self.current_state == StatePlanner.PLANNING:
                 self.path_plan()
@@ -59,14 +57,8 @@ class PathPlanner:
 
     def obstacles(self) -> list:
         uav_position = self.uav.uav_info.get_uav_position()
-        obstacles = []
-        obstacles.extend(
-            (uav_position.x + x, uav_position.y + y, uav_position.z) 
-            for x, y in self.uav.map_environment.get_obstacles_rplidar())
-        obstacles.extend(
-            (uav_position.x + x, uav_position.y + y, uav_position.z + z)
-            for x, y, z in self.uav.map_environment.get_obstacles_realsense())
-        return obstacles
+        return [(uav_position.x + x, uav_position.y + y, uav_position.z)
+            for x, y in self.uav.map_environment.get_obstacles_rplidar()]
 
     def has_obstacles_in_current_path(self) -> bool:
         obstacles = self.obstacles()
@@ -80,23 +72,12 @@ class PathPlanner:
     def distance_to_start(self) -> float:
         uav_position = self.uav.uav_info.get_uav_position()
         return Geometry.euclidean_distance(self.start, [uav_position.x, uav_position.y, uav_position.z])
-    
-    def set_heading(self):
-        # gira o drone pra frente do alvo...
-        rospy.loginfo('[PathPlanner]: Set Heading...')
-        uav_position = self.uav.uav_info.get_uav_position()
-        dx = self.goal[0] - uav_position.x
-        dy = self.goal[1] - uav_position.y
-        ref_heading = math.atan2(dy, dx)
-        self.uav.movements.set_heading(ref_heading)
 
     def path_plan(self) -> None:
         rospy.loginfo('[PathPlanner]: Path Planning...')
 
         uav_position = self.uav.uav_info.get_uav_position()
         self.start = (uav_position.x, uav_position.y, uav_position.z)
-
-        # self.set_heading()
 
         time_start = perf_counter()
         rospy.loginfo('[PathPlanner]: Encontrando o caminho...')
@@ -109,8 +90,7 @@ class PathPlanner:
         path.append(self.goal)
         self.current_path = path
         # path = Geometry.apply_cubic_spline(path)
-        # path = Geometry.remove_collinear_points(path)
-        print(path)
+        path = Geometry.remove_collinear_points(path)
         rospy.loginfo('[PathPlanner]: Caminho encontrado...')
         rospy.loginfo(f'[PathPlanner]: O planejamento levou {round(perf_counter() - time_start, 5)}s para ser concluído...')
         self.uav.movements.goto_trajectory(path)

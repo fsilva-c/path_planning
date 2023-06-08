@@ -1,11 +1,11 @@
 import rospy
 from geometry.geometry import Geometry
 from uav.uav_info import UAVInfo
-from mrs_msgs.srv import ReferenceStampedSrv, PathSrv, String, Vec1
+from mrs_msgs.srv import ReferenceStampedSrv, PathSrv, String, Vec1, VelocityReferenceStampedSrv
 from std_srvs.srv import Trigger, SetBool
 from mavros_msgs.srv import CommandBool, SetMode
 from mrs_msgs.msg import Reference
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point, Vector3
 
 class Movements:
     def __init__(self, uav_id: int=1) -> None:
@@ -79,6 +79,15 @@ class Movements:
             rospy.sleep(0.1)
 
         self.motors(False) # desativa os motores...
+
+    def apply_velocity(self, velocity):
+        srv_name = f'/uav{self.uav_id}/control_manager/velocity_reference'
+        rospy.wait_for_service(srv_name)
+        srv_velocity_reference = rospy.ServiceProxy(srv_name, VelocityReferenceStampedSrv)
+        req = VelocityReferenceStampedSrv._request_class()
+        req.reference.reference.velocity = velocity
+        srv_velocity_reference(req)
+        # rospy.sleep(1.0)
 
     def motors(self, status):
         srv_name = f'/uav{self.uav_id}/control_manager/motors'
