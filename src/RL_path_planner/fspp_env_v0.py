@@ -10,12 +10,11 @@ class FSPPEnv(gym.Env):
         self.uav = UAV(uav_id=uav_id)
 
         self.action_space = spaces.Discrete(6)
-        self.observation_space = spaces.Box(low=-100.0, high=100.0, shape=(3,), dtype=np.float32)
-        # self.observation_space = spaces.Dict({
-        #     'position': spaces.Box(low=-100.0, high=100.0, shape=(3,), dtype=np.float32),
-        #     'obstacles': spaces.Box(low=-15.0, high=15.0, shape=(3,), dtype=np.float32),
-        #     'garmin': spaces.Box(low=0.0, high=30.0, shape=(1,), dtype=np.float32)
-        # })
+        self.observation_space = spaces.Dict({
+            'goal': spaces.Box(low=-60.0, high=60.0, shape=(3,), dtype=np.float32),
+            'position': spaces.Box(low=-100.0, high=100.0, shape=(3,), dtype=np.float32),
+            # 'obstacles': spaces.Box(low=-15.0, high=15.0, shape=(3,), dtype=np.float32),
+        })
 
         self.goal = None
     
@@ -32,10 +31,6 @@ class FSPPEnv(gym.Env):
             velocity = Vector3(0.0, 0.0, 0.5)
         elif action == 5: # descer...
             velocity = Vector3(0.0, 0.0, -0.5)
-
-        # zera para o drone n descer de mais
-        if action == 5 and self.uav.uav_info.get_garmin_range() < 1.0:
-            velocity = Vector3(0.0, 0.0, 0.0)
 
         prev_uav_position = self.uav.uav_info.get_uav_position()
         self.uav.movements.apply_velocity(velocity)
@@ -55,30 +50,29 @@ class FSPPEnv(gym.Env):
         uav_position = self.uav.uav_info.get_uav_position()
         distance_to_goal = Geometry.euclidean_distance(
             [uav_position.x, uav_position.y, uav_position.z], self.goal)
+        
         if self.uav.movements.in_target(self.goal):
-            reward = 100.0
+            reward = 500.0
         else:
             prev_distance_to_goal = Geometry.euclidean_distance(
                 [prev_uav_position.x, prev_uav_position.y, prev_uav_position.z], self.goal)
-            if distance_to_goal < prev_distance_to_goal:
-                reward = 1.0
+            if distance_to_goal > prev_distance_to_goal: # se distanciou do goal
+                reward = -30.0
             else:
-                reward = -2.0
+                reward = 100.0 / distance_to_goal
+            
+            if self.uav.uav_info.get_garmin_range() < 1.0: # voando muito baixo
+                reward = -20.0
         return reward
 
     def _get_observation(self):
-        uav_position = self.uav.uav_info.get_uav_position()
-        x = uav_position.x
-        y = uav_position.y
-        z = uav_position.z
-        observation = (x, y, z)
         # obstacles = self.uav.map_environment.get_obstacles_rplidar()
-        # garmin = self.uav.uav_info.get_garmin_range()
-        # observation = {
-        #     'position': (x, y, z),
-        #     'obstacles': obstacles,
-        #     'garmin': garmin
-        # }
+        uav_position = self.uav.uav_info.get_uav_position()
+        observation = {
+            'goal': self.goal,
+            'position': (uav_position.x, uav_position.y, uav_position.z),
+            # 'obstacles': obstacles,
+        }
         return observation
 
     def _generate_random_goal(self):
