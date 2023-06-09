@@ -3,9 +3,9 @@ from geometry.geometry import Geometry
 from uav.uav_info import UAVInfo
 from mrs_msgs.srv import ReferenceStampedSrv, PathSrv, String, Vec1, VelocityReferenceStampedSrv
 from std_srvs.srv import Trigger, SetBool
-from mavros_msgs.srv import CommandBool, SetMode
+from mavros_msgs.srv import CommandBool, SetMode, CommandTOL
 from mrs_msgs.msg import Reference
-from geometry_msgs.msg import Point, Vector3
+from geometry_msgs.msg import Point
 
 class Movements:
     def __init__(self, uav_id: int=1) -> None:
@@ -37,27 +37,18 @@ class Movements:
 
     def takeoff(self):
         rospy.loginfo("DECOLANDO UAV...")
-        srv_name = f'/uav{self.uav_id}/uav_manager/takeoff'
+        takeoff_proxy = rospy.ServiceProxy(f'/uav{self.uav_id}/uav_manager/takeoff', Trigger)
+        mode_proxy = rospy.ServiceProxy(f'/uav{self.uav_id}/mavros/set_mode', SetMode)
+        arming_proxy = rospy.ServiceProxy(f'/uav{self.uav_id}/mavros/cmd/arming', CommandBool)
 
-        if self.uav_info.get_active_tracker() == "MpcTracker":
-            return
+        mode_proxy(0, 'OFFBOARD')
+        rospy.sleep(1)
+        arming_proxy(True)
+        rospy.sleep(1)
+        takeoff_proxy()
+        rospy.sleep(2)
 
-        # checa se está em condições favoráveis a decolagem...
-        while not self.uav_info.get_motors_status():
-            self.motors(True)
-
-        while not self.uav_info.is_armed():
-            self.arming(True)
-
-        while self.uav_info.get_mode() != "OFFBOARD":
-            self.set_mode(0, "OFFBOARD")
-
-        rospy.wait_for_service(srv_name)
-        srv_takeoff = rospy.ServiceProxy(srv_name, Trigger)
-        req = Trigger._request_class()
-        srv_takeoff(req)
-
-        # "aguarde" enquanto não decolar...
+        # aguarde enquanto não decolar...
         while self.uav_info.get_active_tracker() != "MpcTracker":
             rospy.sleep(0.1)
 

@@ -1,19 +1,23 @@
-import gym
+import rospy
 import numpy as np
-from gym import spaces
 from uav.uav import UAV
+from std_srvs.srv import Empty
 from geometry.geometry import Geometry
 from geometry_msgs.msg import Vector3
+import gym
+from gym import spaces
 
 class FSPPEnv(gym.Env):
     def __init__(self, uav_id=1) -> None:
         self.uav = UAV(uav_id=uav_id)
 
+        self.srv_reset = rospy.ServiceProxy('/gazebo/reset_world', Empty)
+
         self.action_space = spaces.Discrete(6)
         self.observation_space = spaces.Dict({
             'goal': spaces.Box(low=-60.0, high=60.0, shape=(3,), dtype=np.float32),
             'position': spaces.Box(low=-100.0, high=100.0, shape=(3,), dtype=np.float32),
-            # 'obstacles': spaces.Box(low=-15.0, high=15.0, shape=(3,), dtype=np.float32),
+            # 'obstacles': spaces.Box(low=-15, high=15, shape=(10,2), dtype=np.float32),
         })
 
         self.goal = None
@@ -43,6 +47,10 @@ class FSPPEnv(gym.Env):
         return observation, reward, done, info
 
     def reset(self):
+        # rospy.wait_for_service('/gazebo/reset_world')
+        # self.srv_reset()
+        # rospy.sleep(3)
+        # self.uav.movements.takeoff()
         self.goal = self._generate_random_goal()
         return self._get_observation()
 
@@ -71,7 +79,7 @@ class FSPPEnv(gym.Env):
         observation = {
             'goal': self.goal,
             'position': (uav_position.x, uav_position.y, uav_position.z),
-            # 'obstacles': obstacles,
+            # 'obstacles': map(np.array, obstacles),
         }
         return observation
 
