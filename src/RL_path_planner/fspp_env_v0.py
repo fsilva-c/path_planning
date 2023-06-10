@@ -51,6 +51,7 @@ class FSPPEnv(gym.Env):
         # self.srv_reset()
         # rospy.sleep(3)
         # self.uav.movements.takeoff()
+        self.uav.movements.goto([0.0, 0.0, 2.0])
         self.goal = self._generate_random_goal()
         return self._get_observation()
 
@@ -95,9 +96,13 @@ class FSPPEnv(gym.Env):
         return goal
 
     def _check_episode_completion(self): # verificando se o episódio terminou...
+        uav_position = self.uav.uav_info.get_uav_position()
         if self.uav.movements.in_target(self.goal): # chegou no destino
             done = True
         elif self.uav.uav_info.get_active_tracker() == 'NullTracker': # bateu e caiu
+            done = True
+        elif Geometry.euclidean_distance( 
+            [uav_position.x, uav_position.y, uav_position.z], self.goal) > 10.0: # muito distante do goal
             done = True
         else:
             done = False

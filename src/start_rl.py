@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import rospy
 from uav.uav import UAV
 from RL_path_planner.fspp_env_v0 import FSPPEnv
@@ -24,17 +27,17 @@ def start():
     model = DQN(
         'MultiInputPolicy',
         env,
-        learning_rate=0.00025,
         verbose=1,
-        batch_size=32,
-        train_freq=4,
-        target_update_interval=10000,
-        learning_starts=10000,
-        buffer_size=500000,
-        max_grad_norm=10,
-        exploration_fraction=0.1,
-        exploration_final_eps=0.01,
-        device='cuda',
+        # learning_rate=0.00025,
+        # batch_size=32,
+        # train_freq=4,
+        # target_update_interval=10000,
+        # learning_starts=10000,
+        # buffer_size=500000,
+        # max_grad_norm=10,
+        # exploration_fraction=0.1,
+        # exploration_final_eps=0.01,
+        # device='cuda',
         tensorboard_log='./tb_logs/',
     )
 
