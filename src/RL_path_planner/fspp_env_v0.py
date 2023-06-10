@@ -21,6 +21,7 @@ class FSPPEnv(gym.Env):
         })
 
         self.goal = None
+        self.initial_distance_to_goal = None
     
     def step(self, action):
         if action == 0: # direita...
@@ -36,11 +37,11 @@ class FSPPEnv(gym.Env):
         elif action == 5: # descer...
             velocity = Vector3(0.0, 0.0, -0.5)
 
-        prev_uav_position = self.uav.uav_info.get_uav_position()
+        uav_position = self.uav.uav_info.get_uav_position()
         self.uav.movements.apply_velocity(velocity)
 
         observation = self._get_observation()
-        reward = self._calculate_reward(prev_uav_position)
+        reward = self._calculate_reward(uav_position)
         done = self._check_episode_completion()
         info = {}
 
@@ -51,27 +52,29 @@ class FSPPEnv(gym.Env):
         # self.srv_reset()
         # rospy.sleep(3)
         # self.uav.movements.takeoff()
-        self.uav.movements.goto([0.0, 0.0, 2.0])
+        uav_position = self.uav.uav_info.get_uav_position()
         self.goal = self._generate_random_goal()
+        self.initial_distance_to_goal = Geometry.euclidean_distance(
+            self.goal, [uav_position.x, uav_position.y, uav_position.z])
         return self._get_observation()
 
-    def _calculate_reward(self, prev_uav_position):
+    def _distance_to_goal(self):
         uav_position = self.uav.uav_info.get_uav_position()
-        distance_to_goal = Geometry.euclidean_distance(
+        return Geometry.euclidean_distance(
             [uav_position.x, uav_position.y, uav_position.z], self.goal)
+
+    def _calculate_reward(self, prev_uav_position):
+        distance_to_goal = self._distance_to_goal()
         
         if self.uav.movements.in_target(self.goal):
-            reward = 500.0
+            reward = 50.0
         else:
             prev_distance_to_goal = Geometry.euclidean_distance(
                 [prev_uav_position.x, prev_uav_position.y, prev_uav_position.z], self.goal)
             if distance_to_goal > prev_distance_to_goal: # se distanciou do goal
-                reward = -30.0
+                reward = -2.0
             else:
-                reward = 100.0 / distance_to_goal
-            
-            if self.uav.uav_info.get_garmin_range() < 1.0: # voando muito baixo
-                reward = -20.0
+                reward = 10.0 / distance_to_goal
         return reward
 
     def _get_observation(self):
@@ -85,8 +88,8 @@ class FSPPEnv(gym.Env):
         return observation
 
     def _generate_random_goal(self):
-        x_values = np.arange(-6.0, 6.0, 0.5)
-        y_values = np.arange(-6.0, 6.0, 0.5)
+        x_values = np.arange(-50.0, 50.0, 0.5)
+        y_values = np.arange(-50.0, 50.0, 0.5)
         z_values = np.arange(1.5, 3.0, 0.5)
         x = np.random.choice(x_values)
         y = np.random.choice(y_values)
@@ -99,10 +102,11 @@ class FSPPEnv(gym.Env):
         uav_position = self.uav.uav_info.get_uav_position()
         if self.uav.movements.in_target(self.goal): # chegou no destino
             done = True
+        elif uav_position.z < 1.0: # voando muito baixo... temporário. o certo é NullTracker quando o reset simulation tiver funcionando
+            done = True
         elif self.uav.uav_info.get_active_tracker() == 'NullTracker': # bateu e caiu
             done = True
-        elif Geometry.euclidean_distance( 
-            [uav_position.x, uav_position.y, uav_position.z], self.goal) > 10.0: # muito distante do goal
+        elif self._distance_to_goal() > self.initial_distance_to_goal + 5.0: # se distanciou muito do goal
             done = True
         else:
             done = False

@@ -37,8 +37,8 @@ def start():
         # max_grad_norm=10,
         # exploration_fraction=0.1,
         # exploration_final_eps=0.01,
-        # device='cuda',
-        tensorboard_log='./tb_logs/',
+        device='cuda',
+        # tensorboard_log='./tb_logs/',
     )
 
     callbacks = []

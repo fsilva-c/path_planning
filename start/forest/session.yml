@@ -1,6 +1,6 @@
 name: simulation
 root: ./
-pre_window: export UAV_NAME=uav1; export RUN_TYPE=simulation; export UAV_TYPE=f450; export WORLD_NAME=simulation_local; export SENSORS="garmin_down"; export ODOMETRY_TYPE="gps"
+pre_window: export UAV_NAME=uav1; export RUN_TYPE=simulation; export UAV_TYPE=f450; export WORLD_NAME=simulation_local; export SENSORS="garmin_down"; export ODOMETRY_TYPE="gps"; export PX4_SIM_SPEED_FACTOR=5
 startup_window: goto
 windows:
   - roscore:
@@ -10,7 +10,7 @@ windows:
   - gazebo:
       layout: tiled
       panes:
-        - waitForRos; roslaunch mrs_simulation simulation.launch gui:=true # world_name:=forest
+        - waitForRos; roslaunch mrs_simulation simulation.launch gui:=false # world_name:=forest
   - status:
       layout: tiled
       panes:
@@ -28,6 +28,7 @@ windows:
       panes:
         - waitForSimulation; roslaunch mrs_uav_general automatic_start.launch
         - 'waitForControl;
+          sleep 3;
           rosservice call /$UAV_NAME/mavros/cmd/arming 1;
           sleep 2;
           rosservice call /$UAV_NAME/mavros/set_mode 0 offboard'
@@ -38,18 +39,4 @@ windows:
   - goto:
       layout: tiled
       panes:
-        - 'history -s roslaunch fs_path_planning start_mission.launch'
-  - rviz:
-      layout: tiled
-      panes:
-        - waitForControl; rosrun rviz rviz -d ./rviz.rviz
-        - waitForControl; roslaunch mrs_rviz_plugins load_robot.launch
-  - easy_control:
-      layout: tiled
-      panes:
-        - waitForControl; waitForControl; roslaunch mrs_uav_general logitech_joystick.launch
-        - waitForControl; waitForControl; roslaunch mrs_rviz_plugins rviz_interface.launch
-  - layout:
-      layout: tiled
-      panes:
-        - waitForControl; sleep 3; ~/.i3/layout_manager.sh ./layout.json
+        - 'history -s roslaunch fs_path_planning start_rl.launch'

@@ -78,7 +78,7 @@ class Movements:
         req = VelocityReferenceStampedSrv._request_class()
         req.reference.reference.velocity = velocity
         srv_velocity_reference(req)
-        rospy.sleep(1.0)
+        rospy.sleep(1.5)
 
     def motors(self, status):
         srv_name = f'/uav{self.uav_id}/control_manager/motors'
@@ -179,4 +179,4 @@ class Movements:
             target.append(uav_position.z)
 
         # 30 cm
-        return Geometry.euclidean_distance(target, [uav_position.x, uav_position.y, uav_position.z]) <= 0.3
+        return Geometry.euclidean_distance(target, [uav_position.x, uav_position.y, uav_position.z]) <= 0.5
