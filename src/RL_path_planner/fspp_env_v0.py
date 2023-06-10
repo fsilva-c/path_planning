@@ -1,4 +1,5 @@
 import rospy
+import os
 import numpy as np
 from uav.uav import UAV
 from std_srvs.srv import Empty
@@ -11,13 +12,14 @@ class FSPPEnv(gym.Env):
     def __init__(self, uav_id=1) -> None:
         self.uav = UAV(uav_id=uav_id)
 
-        self.srv_reset = rospy.ServiceProxy('/gazebo/reset_world', Empty)
+        self.reset_proxy = rospy.ServiceProxy('/gazebo/reset_world', Empty)
 
         self.action_space = spaces.Discrete(6)
+
         self.observation_space = spaces.Dict({
             'goal': spaces.Box(low=-60.0, high=60.0, shape=(3,), dtype=np.float32),
             'position': spaces.Box(low=-100.0, high=100.0, shape=(3,), dtype=np.float32),
-            # 'obstacles': spaces.Box(low=-15, high=15, shape=(10,2), dtype=np.float32),
+            'obstacles': spaces.Box(low=0, high=15.0, shape=(720,), dtype=np.float32),
         })
 
         self.goal = None
@@ -48,10 +50,23 @@ class FSPPEnv(gym.Env):
         return observation, reward, done, info
 
     def reset(self):
-        # rospy.wait_for_service('/gazebo/reset_world')
-        # self.srv_reset()
-        # rospy.sleep(3)
+        # try:
+        #     self.reset_proxy()
+        # except rospy.ServiceException as e:
+        #     rospy.logerr(f'[FSPPEnv.reset]: fail reset_proxy(): {e}')
         # self.uav.movements.takeoff()
+        import roslaunch
+
+        roslaunch.core.Node()
+        
+        nodes = os.popen("rosnode list").readlines()
+        for node in nodes:
+            node = node.replace('\n', '')
+            if '/uav1/' in node:
+                os.system(f'rosnode kill {node}')
+
+        rospy.sleep(5)
+
         uav_position = self.uav.uav_info.get_uav_position()
         self.goal = self._generate_random_goal()
         self.initial_distance_to_goal = Geometry.euclidean_distance(
@@ -64,32 +79,35 @@ class FSPPEnv(gym.Env):
             [uav_position.x, uav_position.y, uav_position.z], self.goal)
 
     def _calculate_reward(self, prev_uav_position):
+        reward = 0
         distance_to_goal = self._distance_to_goal()
         
-        if self.uav.movements.in_target(self.goal):
-            reward = 50.0
+        if self.uav.uav_info.get_active_tracker() == 'NullTracker': # bateu e caiu
+            reward = -50.0
+        elif self.uav.movements.in_target(self.goal): # chegou no alvo
+            reward = 100.0
         else:
             prev_distance_to_goal = Geometry.euclidean_distance(
                 [prev_uav_position.x, prev_uav_position.y, prev_uav_position.z], self.goal)
             if distance_to_goal > prev_distance_to_goal: # se distanciou do goal
-                reward = -2.0
+                reward = -10.0
             else:
-                reward = 10.0 / distance_to_goal
+                reward = 10.0 - (distance_to_goal * 0.5)
         return reward
-
     def _get_observation(self):
         # obstacles = self.uav.map_environment.get_obstacles_rplidar()
+        laser_scan = self.uav.uav_info.get_laser_scan()
         uav_position = self.uav.uav_info.get_uav_position()
         observation = {
             'goal': self.goal,
             'position': (uav_position.x, uav_position.y, uav_position.z),
-            # 'obstacles': map(np.array, obstacles),
+            'obstacles': laser_scan.ranges,
         }
         return observation
 
     def _generate_random_goal(self):
-        x_values = np.arange(-50.0, 50.0, 0.5)
-        y_values = np.arange(-50.0, 50.0, 0.5)
+        x_values = np.arange(-10.0, 10.0, 0.5)
+        y_values = np.arange(-10.0, 10.0, 0.5)
         z_values = np.arange(1.5, 3.0, 0.5)
         x = np.random.choice(x_values)
         y = np.random.choice(y_values)
@@ -99,17 +117,19 @@ class FSPPEnv(gym.Env):
         return goal
 
     def _check_episode_completion(self): # verificando se o episódio terminou...
-        uav_position = self.uav.uav_info.get_uav_position()
-        if self.uav.movements.in_target(self.goal): # chegou no destino
+        done = False
+        distance_to_goal = self._distance_to_goal()
+
+        if self.uav.uav_info.get_active_tracker() == 'NullTracker': # bateu e caiu
             done = True
-        elif uav_position.z < 1.0: # voando muito baixo... temporário. o certo é NullTracker quando o reset simulation tiver funcionando
+            rospy.loginfo('[FSPPEnv._check_episode_completion]: bateu e caiu')
+        elif self.uav.movements.in_target(self.goal): # chegou no destino
             done = True
-        elif self.uav.uav_info.get_active_tracker() == 'NullTracker': # bateu e caiu
+            rospy.loginfo('[FSPPEnv._check_episode_completion]: chegou no destino')
+        elif distance_to_goal > self.initial_distance_to_goal + 5.0: # se distanciou muito do goal
             done = True
-        elif self._distance_to_goal() > self.initial_distance_to_goal + 5.0: # se distanciou muito do goal
-            done = True
-        else:
-            done = False
+            rospy.loginfo('[FSPPEnv._check_episode_completion]: se distanciou muito do goal')
+
         return done
 
     def render(self):

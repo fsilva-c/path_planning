@@ -1,6 +1,7 @@
 import tf
 import rospy
 import sensor_msgs.point_cloud2 as pc2
+from geometry.geometry import Geometry
 from geometry_msgs.msg import PointStamped
 from geometry.laser_geometry import LaserProjection
 from uav.uav_info import UAVInfo
@@ -34,3 +35,6 @@ class MapEnvironment:
             point.point.z = z
             tf_point = listener.transformPoint(target_frame, point).point
             yield (tf_point.x, tf_point.y, tf_point.z)
+
+    def distance_to_closest_obstacle(self):
+       return min(self.uav_info.get_laser_scan().ranges)

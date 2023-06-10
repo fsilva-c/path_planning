@@ -1,7 +1,7 @@
 name: simulation
 root: ./
-pre_window: export UAV_NAME=uav1; export RUN_TYPE=simulation; export UAV_TYPE=f450; export WORLD_NAME=simulation_local; export SENSORS="garmin_down"; export ODOMETRY_TYPE="gps"; export PX4_SIM_SPEED_FACTOR=5
-startup_window: goto
+pre_window: export UAV_NAME=uav1; export RUN_TYPE=simulation; export UAV_TYPE=f450; export WORLD_NAME=simulation_local; export SENSORS="garmin_down"; export ODOMETRY_TYPE="gps"; export PX4_SIM_SPEED_FACTOR=4
+startup_window: status
 windows:
   - roscore:
       layout: tiled
@@ -10,32 +10,28 @@ windows:
   - gazebo:
       layout: tiled
       panes:
-        - waitForRos; roslaunch mrs_simulation simulation.launch gui:=false # world_name:=forest
+        - waitForRos; roslaunch mrs_simulation simulation.launch gui:=false world_name:=forest
   - status:
       layout: tiled
       panes:
         - waitForSimulation; roslaunch mrs_uav_status status.launch
+        - 'history -s roslaunch fs_path_planning start_rl.launch'
   - spawn:
       layout: tiled
       panes:
-        - waitForSimulation; rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-rplidar --enable-realsense-front --pos_file `pwd`/pos.yaml"
+        - waitForSimulation; rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-rplidar --pos_file `pwd`/pos.yaml"
   - control:
       layout: tiled
       panes:
-        - waitForOdometry; roslaunch mrs_uav_general core.launch config_control_manager:=./custom_configs/control_manager.yaml config_uav_manager:=./custom_configs/uav_manager.yaml
+        - waitForOdometry; roslaunch mrs_uav_general core.launch config_uav_manager:=./custom_configs/uav_manager.yaml config_odometry:=./custom_configs/odometry.yaml
   - takeoff:
       layout: tiled
       panes:
         - waitForSimulation; roslaunch mrs_uav_general automatic_start.launch
         - 'waitForControl;
-          sleep 3;
           rosservice call /$UAV_NAME/mavros/cmd/arming 1;
           sleep 2;
           rosservice call /$UAV_NAME/mavros/set_mode 0 offboard'
-  - mapplan:
-      layout: tiled
-      panes:
-        - waitForOdometry; roslaunch octomap_mapping_planning mapplan.launch config_octomap:=./custom_configs/octomap.yaml config_pcl_filter_rs_front:=./custom_configs/rs_front_filter.yaml
   - goto:
       layout: tiled
       panes:
