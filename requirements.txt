@@ -1,3 +1,2 @@
-gym==0.21.0
 scipy==1.10.1
 stable_baselines3==1.8.0

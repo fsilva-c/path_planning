@@ -1,22 +1,27 @@
 import os
+import time
 import subprocess
 import rospy
 import numpy as np
 from uav.uav import UAV
 from geometry.geometry import Geometry
 from geometry_msgs.msg import Vector3
+
 import gym
 from gym import spaces
 
-os.environ['UAV_NAME'] = 'uav1'
-os.environ['RUN_TYPE'] = 'simulation'
-os.environ['UAV_TYPE'] = 'f450'
-os.environ['WORLD_NAME'] = 'simulation_local'
-os.environ['SENSORS'] = 'garmin_down'
-os.environ['ODOMETRY_TYPE'] = 'gps'
-os.environ['PX4_SIM_SPEED_FACTOR'] = '4'
+mrs_env = os.environ.copy()
+mrs_env['UAV_NAME'] = 'uav1'
+mrs_env['RUN_TYPE'] = 'simulation'
+mrs_env['UAV_TYPE'] = 'f450'
+mrs_env['WORLD_NAME'] = 'simulation_local'
+mrs_env['SENSORS'] = 'garmin_down'
+mrs_env['ODOMETRY_TYPE'] = 'gps'
+mrs_env['PX4_SIM_SPEED_FACTOR'] = '10'
 
 class FSPPEnv(gym.Env):
+    MAX_DISTANCE = 5.0 # [m] distância máxima do goal...
+
     def __init__(self, uav_id=1) -> None:        
         
         self.uav = UAV(uav_id=uav_id)
@@ -54,6 +59,9 @@ class FSPPEnv(gym.Env):
         done = self._check_episode_completion()
         info = {}
 
+        # print(f'observation: {observation}, reward: {reward}, done: {done}, info: {info}')
+        # print(f'reward: {reward}')
+
         return observation, reward, done, info
 
     def reset(self):
@@ -64,7 +72,6 @@ class FSPPEnv(gym.Env):
         # while self.uav.uav_info.get_active_tracker() == 'NullTracker': # aguarda decolar novamente...
         #     rospy.sleep(0.1)
 
-        # self.uav.movements.goto([0.0, 0.0, 2.0])
         self.goal = self._generate_random_goal()
         self.initial_distance_to_goal = Geometry.euclidean_distance(
             [0.0, 0.0, 2.0], self.goal)
@@ -80,7 +87,7 @@ class FSPPEnv(gym.Env):
         distance_to_goal = self._distance_to_goal()
         
         if self.uav.uav_info.get_active_tracker() == 'NullTracker': # bateu e caiu
-            reward = -200.0
+            reward = -50.0
         elif self.uav.movements.in_target(self.goal): # chegou no alvo
             reward = 100.0
         else:
@@ -89,10 +96,11 @@ class FSPPEnv(gym.Env):
             if distance_to_goal > prev_distance_to_goal: # se distanciou do goal
                 reward = -10.0
             else:
-                reward = 10.0 - (distance_to_goal * 0.5)
+                reward = 5
+
         return reward
+    
     def _get_observation(self):
-        # obstacles = self.uav.map_environment.get_obstacles_rplidar()
         laser_scan = self.uav.uav_info.get_laser_scan()
         uav_position = self.uav.uav_info.get_uav_position()
         observation = {
@@ -103,8 +111,8 @@ class FSPPEnv(gym.Env):
         return observation
 
     def _generate_random_goal(self):
-        x_values = np.arange(-10.0, 10.0, 0.5)
-        y_values = np.arange(-10.0, 10.0, 0.5)
+        x_values = np.arange(-15.0, 15.0, 0.5)
+        y_values = np.arange(-15.0, 15.0, 0.5)
         z_values = np.arange(1.5, 3.0, 0.5)
         x = np.random.choice(x_values)
         y = np.random.choice(y_values)
@@ -123,7 +131,7 @@ class FSPPEnv(gym.Env):
         elif self.uav.movements.in_target(self.goal): # chegou no destino
             done = True
             rospy.loginfo('[FSPPEnv._check_episode_completion]: chegou no destino')
-        elif distance_to_goal > self.initial_distance_to_goal + 5.0: # se distanciou muito do goal
+        elif distance_to_goal > self.initial_distance_to_goal + self.MAX_DISTANCE: # se distanciou muito do goal
             done = True
             rospy.loginfo('[FSPPEnv._check_episode_completion]: se distanciou muito do goal')
 
@@ -133,34 +141,30 @@ class FSPPEnv(gym.Env):
         subprocess.Popen(
             'roslaunch mrs_simulation simulation.launch gui:=false world_name:=forest', 
             shell=True,
+            env=mrs_env,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.STDOUT)
-        rospy.sleep(5.0)
+        time.sleep(5.0)
         subprocess.Popen(
             'rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-rplidar --pos 0 0 1 0"', 
             shell=True,
+            env=mrs_env,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.STDOUT)
         subprocess.Popen(
             'roslaunch mrs_uav_general automatic_start.launch', 
             shell=True,
+            env=mrs_env,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.STDOUT)
-        rospy.sleep(10.0)
+        time.sleep(10.0)
         subprocess.Popen(
             'roslaunch mrs_uav_general core.launch', 
             shell=True,
+            env=mrs_env,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.STDOUT)
-        rospy.sleep(5.0)
-        '''
-        subprocess.Popen(
-            'rosservice call /$UAV_NAME/mavros/cmd/arming 1; sleep 2; rosservice call /$UAV_NAME/mavros/set_mode 0 offboard', 
-            shell=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.STDOUT)
-        rospy.sleep(5.0)
-        '''
+        time.sleep(5.0)
 
     def _kill_nodes(self):
         subprocess.call(

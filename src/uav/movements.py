@@ -56,7 +56,10 @@ class Movements:
         rospy.wait_for_service(srv_name)
         srv_takeoff = rospy.ServiceProxy(srv_name, Trigger)
         req = Trigger._request_class()
-        srv_takeoff(req)
+        try:
+            srv_takeoff(req)
+        except rospy.ServiceException as e:
+            rospy.logerr(f'Erro ao chamar o serviço {srv_name}: {e}')
 
         # "aguarde" enquanto não decolar...
         while self.uav_info.get_active_tracker() != "MpcTracker":
@@ -87,8 +90,11 @@ class Movements:
         srv_velocity_reference = rospy.ServiceProxy(srv_name, VelocityReferenceStampedSrv)
         req = VelocityReferenceStampedSrv._request_class()
         req.reference.reference.velocity = velocity
-        srv_velocity_reference(req)
-        rospy.sleep(1.5)
+        try:
+            srv_velocity_reference(req)
+        except rospy.ServiceException as e:
+            rospy.logerr(f'Erro ao chamar o serviço {srv_name}: {e}')
+        rospy.sleep(0.5)
 
     def motors(self, status):
         srv_name = f'/uav{self.uav_id}/control_manager/motors'
@@ -96,7 +102,10 @@ class Movements:
         srv_motors = rospy.ServiceProxy(srv_name, SetBool)
         req = SetBool._request_class()
         req.data = status
-        srv_motors(req)
+        try:
+            srv_motors(req)
+        except rospy.ServiceException as e:
+            rospy.logerr(f'Erro ao chamar o serviço {srv_name}: {e}')
 
     def arming(self, status):
         srv_name = f'/uav{self.uav_id}/mavros/cmd/arming'
@@ -104,7 +113,10 @@ class Movements:
         srv_arming = rospy.ServiceProxy(srv_name, CommandBool)
         req = CommandBool._request_class()
         req.value = status
-        srv_arming(req)
+        try:
+            srv_arming(req)
+        except rospy.ServiceException as e:
+            rospy.logerr(f'Erro ao chamar o serviço {srv_name}: {e}')
 
     def set_mode(self, base_mode, custom_mode):
         srv_name = f'/uav{self.uav_id}/mavros/set_mode'
@@ -113,7 +125,10 @@ class Movements:
         req = SetMode._request_class()
         req.base_mode = base_mode
         req.custom_mode = custom_mode
-        srv_set_mode(req)
+        try:
+            srv_set_mode(req)
+        except rospy.ServiceException as e:
+            rospy.logerr(f'Erro ao chamar o serviço {srv_name}: {e}')
 
     def set_velocity(self, mode) -> None:
         srv_name = f'/uav{self.uav_id}/constraint_manager/set_constraints'
@@ -121,14 +136,10 @@ class Movements:
         srv_set_mode = rospy.ServiceProxy(srv_name, String)
         req = String._request_class()
         req.value = mode
-        srv_set_mode(req)
-
-    def hover(self):
-        srv_name = f'/uav{self.uav_id}/control_manager/hover'
-        rospy.wait_for_service(srv_name)
-        srv_hover = rospy.ServiceProxy(srv_name, Trigger)
-        req = Trigger._request_class()
-        srv_hover(req)
+        try:
+            srv_set_mode(req)
+        except rospy.ServiceException as e:
+            rospy.logerr(f'Erro ao chamar o serviço {srv_name}: {e}')
 
     def set_heading(self, heading):
         srv_name = f'/uav{self.uav_id}/control_manager/set_heading'
