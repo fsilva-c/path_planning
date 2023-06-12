@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import rospy
+import time
+import subprocess
 from uav.uav import UAV
 from RL_path_planner.fspp_env_v0 import FSPPEnv
 from stable_baselines3 import DQN
@@ -11,20 +13,9 @@ from stable_baselines3.common.callbacks import EvalCallback
 
 uav = UAV(uav_id=1)
 
-import roslaunch
-
-node = roslaunch.core.Node(
-    'mrs_simulation', 
-    'simulation.launch',
-    remap_args=[('world_name', 'forest')]
-)
-
-launch = roslaunch.scriptapi.ROSLaunch()
-launch.start()
-
-process = launch.launch(node)
-print(process.is_alive())
-process.stop()
+# subprocess.Popen(['tmuxinator', 'start', '-p', '../start/forest/session.yml'])
+# time.sleep(15)
+# subprocess.call(['bash', 'kill.sh'])
 
 # def start_mrs():
 #     os.environ['UAV_NAME'] = 'uav1'
@@ -109,10 +100,10 @@ def start():
     # kwargs["callback"] = callbacks
 
     model.learn(
-        total_timesteps=10000,
+        total_timesteps=1e5,
         # tb_log_name="dqn_drone_run_" + str(rospy.get_time()),
         # **kwargs
     )
-    # model.save(f'DQN_training_model_docs')
+    model.save(f'DQN_training_model_docs')
 
-# start()
+start()

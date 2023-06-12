@@ -24,7 +24,7 @@ class FSPPEnv(gym.Env):
 
         self.goal = None
         self.initial_distance_to_goal = None
-    
+
     def step(self, action):
         if action == 0: # direita...
             velocity = Vector3(0.5, 0.0, 0.0)
@@ -55,22 +55,56 @@ class FSPPEnv(gym.Env):
         # except rospy.ServiceException as e:
         #     rospy.logerr(f'[FSPPEnv.reset]: fail reset_proxy(): {e}')
         # self.uav.movements.takeoff()
-        import roslaunch
+   
+   
+        # import roslaunch
 
-        roslaunch.core.Node()
+        # roslaunch.core.Node()
         
-        nodes = os.popen("rosnode list").readlines()
-        for node in nodes:
-            node = node.replace('\n', '')
-            if '/uav1/' in node:
-                os.system(f'rosnode kill {node}')
+        # nodes = os.popen("rosnode list").readlines()
+        # for node in nodes:
+        #     node = node.replace('\n', '')
+        #     if '/uav1/' in node:
+        #         os.system(f'rosnode kill {node}')
 
-        rospy.sleep(5)
+        # rospy.sleep(5)
 
-        uav_position = self.uav.uav_info.get_uav_position()
+        # uav_position = self.uav.uav_info.get_uav_position()
+
+        '''
+        # rosnode list...
+        /gazebo
+        /mrs_drone_spawner
+        /rosout
+        /uav1/automatic_start
+        /uav1/constraint_manager
+        /uav1/control_manager
+        /uav1/gain_manager
+        /uav1/mavros
+        /uav1/mavros_diagnostics
+        /uav1/mrs_uav_status
+        /uav1/mrs_uav_status_acquisition
+        /uav1/odometry
+        /uav1/rtk_republisher
+        /uav1/trajectory_generation
+        /uav1/uav1_nodelet_manager
+        /uav1/uav_manager
+
+        # yml...
+        -gazebo: waitForRos; roslaunch mrs_simulation simulation.launch gui:=false 
+        -spawn: waitForSimulation; rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-rplidar --pos_file `pwd`/pos.yaml"
+        -control: waitForOdometry; roslaunch mrs_uav_general core.launch
+        -takeoff: waitForSimulation; roslaunch mrs_uav_general automatic_start.launch
+        -takeoff: 'waitForControl;
+          rosservice call /$UAV_NAME/mavros/cmd/arming 1;
+          sleep 2;
+          rosservice call /$UAV_NAME/mavros/set_mode 0 offboard'
+        '''
+
+        self.uav.movements.goto([0.0, 0.0, 2.0])
         self.goal = self._generate_random_goal()
         self.initial_distance_to_goal = Geometry.euclidean_distance(
-            self.goal, [uav_position.x, uav_position.y, uav_position.z])
+            [0.0, 0.0, 2.0], self.goal)
         return self._get_observation()
 
     def _distance_to_goal(self):
