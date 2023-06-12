@@ -13,7 +13,10 @@ from stable_baselines3.common.callbacks import EvalCallback
 uav = UAV(uav_id=1)
 
 def start():
-    subprocess.Popen(['roscore']) # inicia ros master...
+    subprocess.Popen(
+        ['roscore'], 
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT) # inicia ros master...
     rospy.sleep(2.0)
 
     rospy.init_node('rl_mission', anonymous=True)

@@ -35,9 +35,8 @@ class Movements:
         while not self.in_target(target):
             rospy.sleep(0.1)
 
-    def takeoff(self, verbose=False):
-        if verbose:
-            rospy.loginfo("DECOLANDO UAV...")
+    def takeoff(self):
+        rospy.loginfo("DECOLANDO UAV...")
             
         srv_name = f'/uav{self.uav_id}/uav_manager/takeoff'
 
@@ -45,8 +44,8 @@ class Movements:
             return
 
         # checa se está em condições favoráveis a decolagem...
-        while not self.uav_info.get_motors_status():
-            self.motors(True)
+        # while not self.uav_info.get_motors_status():
+        #     self.motors(True)
 
         while not self.uav_info.is_armed():
             self.arming(True)

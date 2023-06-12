@@ -14,7 +14,7 @@ os.environ['UAV_TYPE'] = 'f450'
 os.environ['WORLD_NAME'] = 'simulation_local'
 os.environ['SENSORS'] = 'garmin_down'
 os.environ['ODOMETRY_TYPE'] = 'gps'
-os.environ['PX4_SIM_SPEED_FACTOR'] = '1'
+os.environ['PX4_SIM_SPEED_FACTOR'] = '4'
 
 class FSPPEnv(gym.Env):
     def __init__(self, uav_id=1) -> None:        
@@ -60,10 +60,11 @@ class FSPPEnv(gym.Env):
         self._kill_nodes()
         self._start_nodes()
 
-        while self.uav.uav_info.get_active_tracker() == 'NullTracker': # aguarda decolar novamente...
-            rospy.sleep(0.1)
+        self.uav.movements.takeoff()
+        # while self.uav.uav_info.get_active_tracker() == 'NullTracker': # aguarda decolar novamente...
+        #     rospy.sleep(0.1)
 
-        self.uav.movements.goto([0.0, 0.0, 2.0])
+        # self.uav.movements.goto([0.0, 0.0, 2.0])
         self.goal = self._generate_random_goal()
         self.initial_distance_to_goal = Geometry.euclidean_distance(
             [0.0, 0.0, 2.0], self.goal)
@@ -79,7 +80,7 @@ class FSPPEnv(gym.Env):
         distance_to_goal = self._distance_to_goal()
         
         if self.uav.uav_info.get_active_tracker() == 'NullTracker': # bateu e caiu
-            reward = -50.0
+            reward = -200.0
         elif self.uav.movements.in_target(self.goal): # chegou no alvo
             reward = 100.0
         else:
@@ -130,40 +131,42 @@ class FSPPEnv(gym.Env):
     
     def _start_nodes(self):
         subprocess.Popen(
-            'roslaunch mrs_simulation simulation.launch gui:=true', 
+            'roslaunch mrs_simulation simulation.launch gui:=false world_name:=forest', 
             shell=True,
-            
-            )
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT)
         rospy.sleep(5.0)
         subprocess.Popen(
             'rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-rplidar --pos 0 0 1 0"', 
             shell=True,
-            
-            )
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT)
         subprocess.Popen(
             'roslaunch mrs_uav_general automatic_start.launch', 
             shell=True,
-            
-            )
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT)
         rospy.sleep(10.0)
         subprocess.Popen(
             'roslaunch mrs_uav_general core.launch', 
             shell=True,
-            
-            )
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT)
         rospy.sleep(5.0)
+        '''
         subprocess.Popen(
             'rosservice call /$UAV_NAME/mavros/cmd/arming 1; sleep 2; rosservice call /$UAV_NAME/mavros/set_mode 0 offboard', 
             shell=True,
-            
-            )
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT)
         rospy.sleep(5.0)
+        '''
 
     def _kill_nodes(self):
         subprocess.call(
             ['sh', './kill.sh'],
-            
-            )
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT)
         rospy.sleep(2.0)
 
     def render(self):
