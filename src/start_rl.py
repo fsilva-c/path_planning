@@ -4,7 +4,7 @@
 import rospy
 import subprocess
 from uav.uav import UAV
-from RL_path_planner.fspp_env_v1 import FSPPEnv
+from RL_path_planner.fspp_env_v0 import FSPPEnv
 from stable_baselines3 import DQN
 from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor

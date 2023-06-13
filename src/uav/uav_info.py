@@ -50,8 +50,10 @@ class UAVInfo:
     def callback_point_cloud_2(self, msg):
         self.point_cloud_2 = msg
 
-    def get_uav_position(self):
-        return self.uav_pos.position
+    def get_uav_position(self, tolist=False):
+        return (self.uav_pos.position 
+                if not tolist else
+                [self.uav_pos.position.x, self.uav_pos.position.y, self.uav_pos.position.z])
 
     def get_heading(self):
         return self.heading.value
