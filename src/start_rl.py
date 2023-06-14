@@ -30,8 +30,11 @@ def start():
         device='cuda',
     )
 
-    callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=200, verbose=1)
-    eval_callback = EvalCallback(env, callback_on_new_best=callback_on_best)
+    eval_callback = EvalCallback(
+        env, 
+        n_eval_episodes=5,
+        best_model_save_path='.'
+    )
 
     model.learn(total_timesteps=5e5, callback=eval_callback)
     model.save(f'DQN_training_model_docs')
