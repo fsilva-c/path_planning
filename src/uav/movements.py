@@ -64,6 +64,8 @@ class Movements:
         # "aguarde" enquanto não decolar...
         while self.uav_info.get_active_tracker() != "MpcTracker":
             rospy.sleep(0.1)
+        
+        rospy.loginfo("UAV DECOLADO...")
 
     def land(self):
         rospy.loginfo("POUSANDO UAV...")

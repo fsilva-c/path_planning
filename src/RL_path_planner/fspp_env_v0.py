@@ -146,7 +146,7 @@ class FSPPEnv(gym.Env):
     
     def _start_nodes(self):
         subprocess.Popen(
-            'roslaunch mrs_simulation simulation.launch gui:=true world_name:=forest', 
+            'roslaunch mrs_simulation simulation.launch gui:=false world_name:=forest', 
             shell=True,
             env=mrs_env,
             stdout=subprocess.DEVNULL,
