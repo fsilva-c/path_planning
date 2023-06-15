@@ -36,7 +36,7 @@ class Movements:
             rospy.sleep(0.1)
 
     def takeoff(self):
-        rospy.loginfo("DECOLANDO UAV...")
+        # rospy.loginfo("DECOLANDO UAV...")
             
         srv_name = f'/uav{self.uav_id}/uav_manager/takeoff'
 
@@ -65,7 +65,7 @@ class Movements:
         while self.uav_info.get_active_tracker() != "MpcTracker":
             rospy.sleep(0.1)
         
-        rospy.loginfo("UAV DECOLADO...")
+        # rospy.loginfo("UAV DECOLADO...")
 
     def land(self):
         rospy.loginfo("POUSANDO UAV...")
