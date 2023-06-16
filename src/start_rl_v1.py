@@ -3,12 +3,14 @@
 
 import rospy
 import subprocess
+import numpy as np
 from uav.uav import UAV
 from RL_path_planner.fspp_env_v1 import FSPPEnv
 from stable_baselines3 import DDPG
 from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import EvalCallback
+from stable_baselines3.common.noise import NormalActionNoise
 
 uav = UAV(uav_id=1)
 
@@ -23,11 +25,17 @@ def start():
     rospy.loginfo('Iniciando os testes...')
     
     env = DummyVecEnv([lambda: Monitor(FSPPEnv())])
+
+    n_actions = env.action_space.shape[-1]
+    action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions))
+
     model = DDPG(
         'MultiInputPolicy',
         env,
         verbose=1,
         device='cuda',
+        action_noise=action_noise,
+        # learning_rate=0.0001,
     )
 
     eval_callback = EvalCallback(

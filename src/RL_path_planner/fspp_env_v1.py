@@ -17,7 +17,7 @@ mrs_env['UAV_TYPE'] = 'f450'
 mrs_env['WORLD_NAME'] = 'simulation_local'
 mrs_env['SENSORS'] = 'garmin_down'
 mrs_env['ODOMETRY_TYPE'] = 'gps'
-mrs_env['PX4_SIM_SPEED_FACTOR'] = '5'
+mrs_env['PX4_SIM_SPEED_FACTOR'] = '8'
 
 class FSPPEnv(gym.Env):
     MAX_DISTANCE = 5.0 # [m] distância máxima do goal...
@@ -27,17 +27,18 @@ class FSPPEnv(gym.Env):
         
         self.uav = UAV(uav_id=uav_id)
 
-        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(3,), dtype=np.float32)
+        self.action_space = spaces.Box(low=-1.5, high=1.5, shape=(3,), dtype=np.float32)
 
         self.observation_space = spaces.Dict({
             'goal_distance': spaces.Box(low=0.0, high=np.inf, shape=(1,), dtype=np.float32),
             'position': spaces.Box(low=-100.0, high=100.0, shape=(3,), dtype=np.float32),
-            'obstacles': spaces.Box(low=0.0, high=15.0, shape=(720,), dtype=np.float32),
+            'obstacles': spaces.Box(low=0.0, high=1.0, shape=(720,), dtype=np.float32),
         })
 
         self.goal = None
         self.initial_distance_to_goal = None
         self.n_episodes = 0
+        self.toal_reward_current_episode = 0.0
 
     def step(self, action):
         velocity = Vector3(*action)
@@ -49,8 +50,13 @@ class FSPPEnv(gym.Env):
         done = self._check_episode_completion()
         info = {}
 
-        # print(f'observation: {observation}, reward: {reward}, done: {done}, info: {info}')
+        self.toal_reward_current_episode += reward
+
+        # print(f'observation: {observation}, reward: {reward}, done: {done}, info: {info}, action: {action}')
         # print(f'reward: {reward}')
+        # # print(*action)
+        if np.nan in action:
+            rospy.logerr('[FSPP.step]: NAN action')
 
         return observation, reward, done, info
 
@@ -67,7 +73,6 @@ class FSPPEnv(gym.Env):
         self.initial_distance_to_goal = Geometry.euclidean_distance(
             [0.0, 0.0, 2.0], self.goal)
         
-
         rospy.loginfo('[FSPPEnv.reset]: env resetado')
 
         return self._get_observation()
@@ -81,7 +86,7 @@ class FSPPEnv(gym.Env):
         distance_to_goal = self._distance_to_goal()
         
         if self.uav.uav_info.get_active_tracker() == 'NullTracker': # bateu e caiu
-            reward = -50.0
+            reward = -20.0
         elif self.uav.movements.in_target(self.goal): # chegou no alvo
             reward = 100.0
         else:
@@ -90,18 +95,20 @@ class FSPPEnv(gym.Env):
             if distance_to_goal > prev_distance_to_goal: # se distanciou do goal
                 reward = -10.0
             else:
-                reward = 5
+                reward = (prev_distance_to_goal - distance_to_goal) * 10.0 # mais pontos cada vez que se aproxima do goal...
 
         return reward
     
     def _get_observation(self):
         laser_scan = self.uav.uav_info.get_laser_scan()
+        ranges = np.array(laser_scan.ranges)
+        ranges[np.isinf(ranges)] = laser_scan.range_max
         uav_position = self.uav.uav_info.get_uav_position(tolist=True)
         goal_distance = Geometry.euclidean_distance(uav_position, self.goal)
         observation = {
-            'goal_distance': goal_distance,
-            'position': uav_position,
-            'obstacles': laser_scan.ranges,
+            'goal_distance': np.array(goal_distance),
+            'position': np.array(uav_position),
+            'obstacles': self._normalize(laser_scan.range_min, laser_scan.range_max, ranges),
         }
         return observation
 
@@ -129,15 +136,23 @@ class FSPPEnv(gym.Env):
         elif distance_to_goal > self.initial_distance_to_goal + self.MAX_DISTANCE: # se distanciou muito do goal
             done = True
             rospy.loginfo('[FSPPEnv._check_episode_completion]: se distanciou muito do goal')
+        elif self.toal_reward_current_episode < -500:
+            done = True
+            rospy.loginfo('[FSPPEnv._check_episode_completion]: recompensa muito baixa')
 
         if done:
             self.n_episodes += 1
+            self.toal_reward_current_episode = 0.0
 
         return done
+    
+    def _normalize(self, min_val: float, max_val: float, values: np.array):
+        return (values - min_val) / (max_val - min_val)
     
     def _reset_mrs_nodes(self):
         self._kill_nodes()
         self._start_nodes()
+
     
     def _start_nodes(self):
         subprocess.Popen(
