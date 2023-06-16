@@ -1,6 +1,6 @@
 name: simulation
 root: ./
-pre_window: export UAV_NAME=uav1; export RUN_TYPE=simulation; export UAV_TYPE=f450; export WORLD_NAME=simulation_local; export SENSORS="garmin_down"; export ODOMETRY_TYPE="gps"; export PX4_SIM_SPEED_FACTOR=5
+pre_window: export UAV_NAME=uav1; export RUN_TYPE=simulation; export UAV_TYPE=f450; export WORLD_NAME=simulation_local; export SENSORS="garmin_down"; export ODOMETRY_TYPE="gps"
 startup_window: status
 windows:
   - roscore:
@@ -10,16 +10,16 @@ windows:
   - gazebo:
       layout: tiled
       panes:
-        - waitForRos; roslaunch mrs_simulation simulation.launch gui:=false # world_name:=forest
+        - waitForRos; roslaunch mrs_simulation simulation.launch gui:=true world_name:=forest
+        # - waitForOdometry; gz camera -c gzclient_camera -f ${UAV_NAME}; history -s gz camera -c gzclient_camera -f ${UAV_NAME}
   - status:
       layout: tiled
       panes:
         - waitForSimulation; roslaunch mrs_uav_status status.launch
-        # - 'history -s roslaunch fs_path_planning start_rl.launch'
   - spawn:
       layout: tiled
       panes:
-        - waitForSimulation; rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-rplidar --pos_file `pwd`/pos.yaml"
+        - waitForSimulation; rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-velodyne --use-gpu-ray --pos_file `pwd`/pos.yaml"
   - control:
       layout: tiled
       panes:
@@ -32,7 +32,8 @@ windows:
           rosservice call /$UAV_NAME/mavros/cmd/arming 1;
           sleep 2;
           rosservice call /$UAV_NAME/mavros/set_mode 0 offboard'
-  - goto:
+  - rviz:
       layout: tiled
       panes:
-        - 'history -s roslaunch fs_path_planning start_rl.launch'
+        - waitForControl; roslaunch mrs_uav_testing rviz.launch
+        - waitForControl; roslaunch mrs_rviz_plugins load_robot.launch

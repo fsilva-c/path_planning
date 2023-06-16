@@ -6,8 +6,6 @@ SCRIPT=$(readlink -f $0)
 SCRIPTPATH=`dirname $SCRIPT`
 cd "$SCRIPTPATH"
 
-rosrun mrs_uav_general check_ros_package.sh ./required_packages.txt
-
 if [[ $? -eq 0 ]]; then
   # start tmuxinator
   tmuxinator start -p ./session.yml

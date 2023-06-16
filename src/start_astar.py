@@ -19,6 +19,9 @@ def start():
         rospy.sleep(0.1)
 
     rospy.loginfo('Iniciando os testes...')
-    pp.run()
+    for obstable in uav.map_environment.get_obstacles_realsense():
+        print(obstable)
+    print(uav.uav_info.get_laser_scan())
+    # pp.run()
 
 start()

@@ -38,7 +38,6 @@ class FSPPEnv(gym.Env):
         self.goal = None
         self.initial_distance_to_goal = None
         self.n_episodes = 0
-        self.toal_reward_current_episode = 0.0
 
     def step(self, action):
         velocity = Vector3(*action)
@@ -49,8 +48,6 @@ class FSPPEnv(gym.Env):
         reward = self._calculate_reward(uav_position)
         done = self._check_episode_completion()
         info = {}
-
-        self.toal_reward_current_episode += reward
 
         # print(f'observation: {observation}, reward: {reward}, done: {done}, info: {info}, action: {action}')
         # print(f'reward: {reward}')
@@ -136,13 +133,9 @@ class FSPPEnv(gym.Env):
         elif distance_to_goal > self.initial_distance_to_goal + self.MAX_DISTANCE: # se distanciou muito do goal
             done = True
             rospy.loginfo('[FSPPEnv._check_episode_completion]: se distanciou muito do goal')
-        elif self.toal_reward_current_episode < -500:
-            done = True
-            rospy.loginfo('[FSPPEnv._check_episode_completion]: recompensa muito baixa')
 
         if done:
             self.n_episodes += 1
-            self.toal_reward_current_episode = 0.0
 
         return done
     

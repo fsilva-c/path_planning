@@ -24,7 +24,7 @@ class UAVInfo:
         rospy.Subscriber(f'{topic_prefix}/control_manager/diagnostics', ControlManagerDiagnostics, self.callback_diagnostics)
         rospy.Subscriber(f'{topic_prefix}/rplidar/scan', LaserScan, self.callback_laser_scan)
         rospy.Subscriber(f'{topic_prefix}/hector_mapping/slam_cloud', PointCloud, self.callback_point_cloud)
-        rospy.Subscriber(f'{topic_prefix}/pcl_filter_rs_front/points_processed', PointCloud2, self.callback_point_cloud_2)
+        rospy.Subscriber(f'{topic_prefix}/velodyne/scan', PointCloud2, self.callback_point_cloud_2)
 
     def callback_position(self, msg):
         self.uav_pos = msg
