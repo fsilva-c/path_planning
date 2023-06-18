@@ -21,7 +21,7 @@ mrs_env['PX4_SIM_SPEED_FACTOR'] = '4'
 
 class FSPPEnv(gym.Env):
     MAX_DISTANCE = 5.0 # [m] distância máxima do goal...
-    N_EPISODES_RESET_GOAL = 200 # quantidade de episódios até resetar o goal
+    N_HITS_RESET_GOAL = 200 # quantidade de episódios até resetar o goal
     POSSIBLE_GOALS = [
         [0.0, 2.0, 2.0],
         [-1.5, 1.4, 2.5],
@@ -57,7 +57,7 @@ class FSPPEnv(gym.Env):
 
         self.goal = None
         self.initial_distance_to_goal = None
-        self.n_episodes = 0
+        self.n_hits_on_taget = 0
 
     def step(self, action):
         velocity = Vector3(*action)
@@ -83,8 +83,8 @@ class FSPPEnv(gym.Env):
         # checar tempo maximo para takeoff
         self.uav.movements.takeoff()
 
-        # gera um novo goal a cada self.N_EPISODES_RESET_GOAL episódios...
-        if self.n_episodes % self.N_EPISODES_RESET_GOAL == 0:
+        # gera um novo goal a cada self.N_HITS_RESET_GOAL (acerto) no target...
+        if self.n_hits_on_taget % self.N_HITS_RESET_GOAL == 0:
             self.goal = self._generate_random_goal()
 
         self.initial_distance_to_goal = Geometry.euclidean_distance(
@@ -130,12 +130,12 @@ class FSPPEnv(gym.Env):
         return observation
 
     def _generate_random_goal(self):
-        if self.n_episodes >= 2000:
+        if self.n_hits_on_taget >= 2000:
             index = np.random.randint(len(self.POSSIBLE_GOALS))
             goal = self.POSSIBLE_GOALS[index]
         else:
             # pega um goal de acordo com o nível atual de dificuldade...
-            difficulty_factor = self.n_episodes // self.N_EPISODES_RESET_GOAL
+            difficulty_factor = self.n_hits_on_taget // self.N_HITS_RESET_GOAL
             index = min(difficulty_factor, len(self.POSSIBLE_GOALS) - 1)
             goal = self.POSSIBLE_GOALS[index]
         print(f'GOAL: {goal}')
@@ -150,13 +150,11 @@ class FSPPEnv(gym.Env):
             rospy.loginfo('[FSPPEnv._check_episode_completion]: bateu e caiu')
         elif self.uav.movements.in_target(self.goal): # chegou no destino
             done = True
+            self.n_hits_on_taget += 1
             rospy.loginfo('[FSPPEnv._check_episode_completion]: chegou no destino')
         elif distance_to_goal > self.initial_distance_to_goal + self.MAX_DISTANCE: # se distanciou muito do goal
             done = True
             rospy.loginfo('[FSPPEnv._check_episode_completion]: se distanciou muito do goal')
-
-        if done:
-            self.n_episodes += 1
 
         return done
     
@@ -166,7 +164,6 @@ class FSPPEnv(gym.Env):
     def _reset_mrs_nodes(self):
         self._kill_nodes()
         self._start_nodes()
-
     
     def _start_nodes(self):
         subprocess.Popen(
