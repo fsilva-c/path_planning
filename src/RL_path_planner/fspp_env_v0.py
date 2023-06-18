@@ -21,7 +21,7 @@ mrs_env['PX4_SIM_SPEED_FACTOR'] = '8'
 
 class FSPPEnv(gym.Env):
     MAX_DISTANCE = 5.0 # [m] distância máxima do goal...
-    N_HITS_RESET_GOAL = 200 # quantidade de episódios até resetar o goal
+    N_HITS_RESET_GOAL = 200 # quantidade de acertos até resetar o goal
     POSSIBLE_GOALS = [
         [0.0, 2.0, 2.0],
         [-1.5, 1.4, 2.5],
