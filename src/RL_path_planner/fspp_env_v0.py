@@ -17,22 +17,42 @@ mrs_env['UAV_TYPE'] = 'f450'
 mrs_env['WORLD_NAME'] = 'simulation_local'
 mrs_env['SENSORS'] = 'garmin_down'
 mrs_env['ODOMETRY_TYPE'] = 'gps'
-mrs_env['PX4_SIM_SPEED_FACTOR'] = '10'
+mrs_env['PX4_SIM_SPEED_FACTOR'] = '4'
 
 class FSPPEnv(gym.Env):
     MAX_DISTANCE = 5.0 # [m] distância máxima do goal...
     N_EPISODES_RESET_GOAL = 200 # quantidade de episódios até resetar o goal
+    POSSIBLE_GOALS = [
+        [0.0, 2.0, 2.0],
+        [-1.5, 1.4, 2.5],
+        [-2.2, -0.8, 3.0],
+        [0.9, 2.9, 2.0],
+        [-4.0, 4.5, 2.5],
+        [4.4, -4.3, 3.0],
+        [2.2, -6.1, 3.0],
+        [2.2, -6.8, 3.0],
+        [9.4, 1.9, 2.5],
+        [-8.0, 8.0, 2.5],
+        [7.5, 9.5, 2.5],
+        [4.6, -13.1, 3.0],
+        [15.0, 7.0, 3.0],
+        [13.2, 12.0, 2.5],
+        [-22.0, 15.0, 2.5],
+        [20.0, 20.0, 2.0],
+        [-26.0, 16.0, 2.5],
+        [-32.0, 30.0, 2.0]
+    ]
 
     def __init__(self, uav_id=1) -> None:
         
         self.uav = UAV(uav_id=uav_id)
 
-        self.action_space = spaces.Discrete(6)
+        self.action_space = spaces.Box(low=-1.5, high=1.5, shape=(3,), dtype=np.float32)
 
         self.observation_space = spaces.Dict({
             'goal_distance': spaces.Box(low=0.0, high=np.inf, shape=(1,), dtype=np.float32),
             'position': spaces.Box(low=-100.0, high=100.0, shape=(3,), dtype=np.float32),
-            'obstacles': spaces.Box(low=0.0, high=15.0, shape=(720,), dtype=np.float32),
+            'obstacles': spaces.Box(low=0.0, high=1.0, shape=(720,), dtype=np.float32),
         })
 
         self.goal = None
@@ -40,19 +60,7 @@ class FSPPEnv(gym.Env):
         self.n_episodes = 0
 
     def step(self, action):
-        if action == 0: # direita...
-            velocity = Vector3(0.5, 0.0, 0.0)
-        elif action == 1: # esquerda...
-            velocity = Vector3(-0.5, 0.0, 0.0)
-        elif action == 2: # frente...
-            velocity = Vector3(0.0, 0.5, 0.0)
-        elif action == 3: # trás...
-            velocity = Vector3(0.0, -0.5, 0.0)
-        elif action == 4: # subir
-            velocity = Vector3(0.0, 0.0, 0.5)
-        elif action == 5: # descer...
-            velocity = Vector3(0.0, 0.0, -0.5)
-
+        velocity = Vector3(*action)
         uav_position = self.uav.uav_info.get_uav_position(tolist=True)
         self.uav.movements.apply_velocity(velocity)
 
@@ -61,15 +69,18 @@ class FSPPEnv(gym.Env):
         done = self._check_episode_completion()
         info = {}
 
-        # print(f'observation: {observation}, reward: {reward}, done: {done}, info: {info}')
+        # print(f'observation: {observation}, reward: {reward}, done: {done}, info: {info}, action: {action}')
         # print(f'reward: {reward}')
+        # # print(*action)
+        if np.nan in action:
+            rospy.logerr('[FSPP.step]: NAN action')
 
         return observation, reward, done, info
 
     def reset(self):
-        self._kill_nodes()
-        self._start_nodes()
+        self._reset_mrs_nodes()
 
+        # checar tempo maximo para takeoff
         self.uav.movements.takeoff()
 
         # gera um novo goal a cada self.N_EPISODES_RESET_GOAL episódios...
@@ -79,6 +90,8 @@ class FSPPEnv(gym.Env):
         self.initial_distance_to_goal = Geometry.euclidean_distance(
             [0.0, 0.0, 2.0], self.goal)
         
+        rospy.loginfo('[FSPPEnv.reset]: env resetado')
+
         return self._get_observation()
 
     def _distance_to_goal(self):
@@ -90,7 +103,7 @@ class FSPPEnv(gym.Env):
         distance_to_goal = self._distance_to_goal()
         
         if self.uav.uav_info.get_active_tracker() == 'NullTracker': # bateu e caiu
-            reward = -50.0
+            reward = -20.0
         elif self.uav.movements.in_target(self.goal): # chegou no alvo
             reward = 100.0
         else:
@@ -99,29 +112,32 @@ class FSPPEnv(gym.Env):
             if distance_to_goal > prev_distance_to_goal: # se distanciou do goal
                 reward = -10.0
             else:
-                reward = 5
+                reward = (prev_distance_to_goal - distance_to_goal) * 10.0 # mais pontos cada vez que se aproxima do goal...
 
         return reward
     
     def _get_observation(self):
         laser_scan = self.uav.uav_info.get_laser_scan()
+        ranges = np.array(laser_scan.ranges)
+        ranges[np.isinf(ranges)] = laser_scan.range_max
         uav_position = self.uav.uav_info.get_uav_position(tolist=True)
         goal_distance = Geometry.euclidean_distance(uav_position, self.goal)
         observation = {
-            'goal_distance': goal_distance,
-            'position': uav_position,
-            'obstacles': laser_scan.ranges,
+            'goal_distance': np.array(goal_distance),
+            'position': np.array(uav_position),
+            'obstacles': self._normalize(laser_scan.range_min, laser_scan.range_max, ranges),
         }
         return observation
 
     def _generate_random_goal(self):
-        x_values = np.arange(-15.0, 15.0, 0.5)
-        y_values = np.arange(-15.0, 15.0, 0.5)
-        z_values = np.arange(1.5, 3.0, 0.5)
-        x = np.random.choice(x_values)
-        y = np.random.choice(y_values)
-        z = np.random.choice(z_values)
-        goal = (x, y, z)
+        if self.n_episodes >= 2000:
+            index = np.random.randint(len(self.POSSIBLE_GOALS))
+            goal = self.POSSIBLE_GOALS[index]
+        else:
+            # pega um goal de acordo com o nível atual de dificuldade...
+            difficulty_factor = self.n_episodes // self.N_EPISODES_RESET_GOAL
+            index = min(difficulty_factor, len(self.POSSIBLE_GOALS) - 1)
+            goal = self.POSSIBLE_GOALS[index]
         print(f'GOAL: {goal}')
         return goal
 
@@ -143,6 +159,14 @@ class FSPPEnv(gym.Env):
             self.n_episodes += 1
 
         return done
+    
+    def _normalize(self, min_val: float, max_val: float, values: np.array):
+        return (values - min_val) / (max_val - min_val)
+    
+    def _reset_mrs_nodes(self):
+        self._kill_nodes()
+        self._start_nodes()
+
     
     def _start_nodes(self):
         subprocess.Popen(

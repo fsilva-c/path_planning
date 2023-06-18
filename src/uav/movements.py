@@ -94,9 +94,9 @@ class Movements:
         req.reference.reference.velocity = velocity
         try:
             srv_velocity_reference(req)
+            rospy.sleep(0.1)
         except rospy.ServiceException as e:
             rospy.logerr(f'Erro ao chamar o serviço {srv_name}: {e}')
-        rospy.sleep(1.0)
 
     def motors(self, status):
         srv_name = f'/uav{self.uav_id}/control_manager/motors'
