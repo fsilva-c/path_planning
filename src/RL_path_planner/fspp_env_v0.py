@@ -17,7 +17,7 @@ mrs_env['UAV_TYPE'] = 'f450'
 mrs_env['WORLD_NAME'] = 'simulation_local'
 mrs_env['SENSORS'] = 'garmin_down'
 mrs_env['ODOMETRY_TYPE'] = 'gps'
-mrs_env['PX4_SIM_SPEED_FACTOR'] = '4'
+mrs_env['PX4_SIM_SPEED_FACTOR'] = '8'
 
 class FSPPEnv(gym.Env):
     MAX_DISTANCE = 5.0 # [m] distância máxima do goal...
