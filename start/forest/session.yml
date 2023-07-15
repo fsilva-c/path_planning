@@ -10,7 +10,7 @@ windows:
   - gazebo:
       layout: tiled
       panes:
-        - waitForRos; roslaunch mrs_simulation simulation.launch gui:=true world_name:=forest
+        - waitForRos; roslaunch mrs_simulation simulation.launch gui:=false world_name:=forest
         # - waitForOdometry; gz camera -c gzclient_camera -f ${UAV_NAME}; history -s gz camera -c gzclient_camera -f ${UAV_NAME}
   - status:
       layout: tiled
@@ -19,7 +19,7 @@ windows:
   - spawn:
       layout: tiled
       panes:
-        - waitForSimulation; rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-velodyne --use-gpu-ray --pos_file `pwd`/pos.yaml"
+        - waitForSimulation; rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-rplidar --enable-realsense-front --use-gpu-ray --pos_file `pwd`/pos.yaml"
   - control:
       layout: tiled
       panes:
@@ -32,6 +32,10 @@ windows:
           rosservice call /$UAV_NAME/mavros/cmd/arming 1;
           sleep 2;
           rosservice call /$UAV_NAME/mavros/set_mode 0 offboard'
+  - pcl_realsense_front:
+      layout: tiled
+      panes:
+        - waitForOdometry; roslaunch fs_path_planning pcl_realsense_front.launch config_pcl_filter_rs_front:=./custom_configs/rs_front_filter.yaml
   - rviz:
       layout: tiled
       panes:

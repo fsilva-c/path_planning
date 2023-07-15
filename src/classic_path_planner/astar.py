@@ -26,8 +26,7 @@ class AStar:
         self.kd_tree = KDTree(obstacles)
 
     def heuristic(self, node, goal) -> float:
-        # return Geometry.euclidean_distance(node.position, goal.position)
-        return Geometry.manhattan_distance(node.position, goal.position)
+        return Geometry.euclidean_distance(node.position, goal.position)
 
     def is_valid(self, node: list) -> bool:
         distance, _ = self.kd_tree.query(self.dg.discrete_to_continuous(node), k=1)

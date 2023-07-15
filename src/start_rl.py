@@ -29,9 +29,11 @@ def start():
         env,
         verbose=1,
         device='cuda',
-        n_steps=1024,
-        stats_window_size=10,
-        # learning_rate=0.0001,
+        batch_size=128,
+        n_steps=2048,
+        learning_rate=0.00025,
+        gamma=0.95,
+        stats_window_size=1, # estatísticas do PPO
     )
 
     eval_callback = EvalCallback(
