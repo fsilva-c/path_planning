@@ -38,3 +38,4 @@ class MapEnvironment:
 
     def distance_to_closest_obstacle(self):
        return min(self.uav_info.get_laser_scan().ranges)
+    
