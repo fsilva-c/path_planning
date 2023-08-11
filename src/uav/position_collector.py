@@ -8,6 +8,7 @@ from gazebo_msgs.msg import ModelStates
 class PositionCollector:
     def __init__(self) -> None:
         self.is_collect = False
+        self.start_time = None
 
         rospy.Subscriber('/gazebo/model_states', ModelStates, self.model_states_callback)
 
@@ -22,13 +23,12 @@ class PositionCollector:
                 y = position.y
                 z = position.z
 
-                print(f'{x}, {y}, {z}')
-
-                # with open(f'uav1-{perf_counter()}.txt', 'a') as f:
-                #     f.write(f'{x}, {y}, {z}\n')
+                with open(f'uav1-{self.start_time}.txt', 'a') as f:
+                    f.write(f'{x}, {y}, {z}\n')
 
     def start_collecting(self):
         self.is_collect = True
+        self.start_time = perf_counter()
         rospy.loginfo("[PositionCollector]: Iniciando a coleta de posições do drone")
 
     def stop_collecting(self):

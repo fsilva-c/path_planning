@@ -21,9 +21,10 @@ def start():
         rospy.sleep(0.1)
 
     rospy.loginfo('Iniciando os testes...')
-    collector.start_collecting()
-    uav.movements.goto([0, 1, 2.0])
-    collector.stop_collecting()
+    # collector.start_collecting()
+    # uav.movements.goto([0, 0, 2.0])
+    # collector.stop_collecting()
+    
     # pp.run()
 
 start()

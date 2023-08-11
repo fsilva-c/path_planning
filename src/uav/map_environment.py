@@ -1,7 +1,6 @@
 import tf
 import rospy
 import sensor_msgs.point_cloud2 as pc2
-from geometry.geometry import Geometry
 from geometry_msgs.msg import PointStamped
 from geometry.laser_geometry import LaserProjection
 from uav.uav_info import UAVInfo

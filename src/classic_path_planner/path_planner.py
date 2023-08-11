@@ -1,5 +1,4 @@
 import rospy
-import math
 from classic_path_planner.astar import AStar
 from time import perf_counter
 from uav.uav import UAV
