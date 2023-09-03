@@ -21,6 +21,8 @@ def start():
         rospy.sleep(0.1)
 
     rospy.loginfo('Iniciando os testes...')
+    for laser in uav.map_environment.get_obstacles_rplidar():
+        print(laser)
     # collector.start_collecting()
     # uav.movements.goto([0, 0, 2.0])
     # collector.stop_collecting()

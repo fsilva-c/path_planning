@@ -10,6 +10,7 @@ class StatePlanner:
     MOVING = 2
     OBSTACLE_FOUND = 3
     GOAL_REACHED = 4
+    COLLISION = 5
 
 class PathPlanner:
     def __init__(
@@ -59,9 +60,6 @@ class PathPlanner:
 
         obstacles = {(uav_position.x + x, uav_position.y + y, uav_position.z)
                  for x, y in self.uav.map_environment.get_obstacles_rplidar()}
-        
-        obstacles.update((uav_position.x + x, uav_position.y + y, uav_position.z + z)
-                     for x, y, z in self.uav.map_environment.get_obstacles_realsense())
         
         return list(obstacles)
 

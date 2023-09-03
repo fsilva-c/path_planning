@@ -1,4 +1,5 @@
 import os
+import random
 import time
 import subprocess
 import rospy
@@ -21,7 +22,9 @@ mrs_env['PX4_SIM_SPEED_FACTOR'] = '3'
 
 class FSPPEnv(gym.Env):
     MAX_DISTANCE = 5.0 # [m] distância máxima do goal...
+    TREE_HEIGHT = 6.0
     N_HITS_RESET_GOAL = 200 # quantidade de acertos até resetar o goal
+    QNT_SCENARIOS = 3
     POSSIBLE_GOALS = [
         [0.0, 2.0, 2.0],
         [-1.5, 1.4, 2.5],
@@ -43,20 +46,19 @@ class FSPPEnv(gym.Env):
         [-32.0, 30.0, 2.0]
     ]
 
-    def __init__(self, uav_id=1) -> None:
+    def __init__(self, uav_id=1, goal=None) -> None:
         self.uav = UAV(uav_id=uav_id)
         self.max_camera_points = 5000
 
-        self.action_space = spaces.Box(low=-1.5, high=1.5, shape=(3,), dtype=np.float32)
+        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(3,), dtype=np.float32)
 
         self.observation_space = spaces.Dict({
             'goal_distance': spaces.Box(low=0.0, high=np.inf, shape=(1,), dtype=np.float32),
             'position': spaces.Box(low=-100.0, high=100.0, shape=(3,), dtype=np.float32),
-            'obstacles': spaces.Box(low=0.0, high=1.0, shape=(720,), dtype=np.float32),
-            # 'realsense': spaces.Box(low=-np.inf, high=np.inf, shape=(self.max_camera_points, 3), dtype=np.float32)
+            'obstacles': spaces.Box(low=0.0, high=14.0, shape=(720,), dtype=np.float32),
         })
 
-        self.goal = None
+        self.goal = goal
         self.initial_distance_to_goal = None
         self.n_hits_on_taget = 0
 
@@ -114,7 +116,10 @@ class FSPPEnv(gym.Env):
                 reward = -10.0
             else:
                 reward = (prev_distance_to_goal - distance_to_goal) * 10.0 # mais pontos cada vez que se aproxima do goal...
-        # adicionar recompensa negativa caso esteja voando acima das árvores...
+            
+            if self.uav.uav_info.get_uav_position().z > self.TREE_HEIGHT: # se estiver voando sob as árvores
+                reward -= 5
+
         reward -= 1
 
         return reward
@@ -126,19 +131,10 @@ class FSPPEnv(gym.Env):
         uav_position = self.uav.uav_info.get_uav_position(tolist=True)
         goal_distance = Geometry.euclidean_distance(uav_position, self.goal)
 
-        # realsense camera...
-        # realsense = [[0.9, 0.2, 1], [0.9, 2, -2], [3.9, 2.2, 5]]
-        '''
-        realsense = list(self.uav.map_environment.get_obstacles_realsense())
-        camera_observation_padded = np.zeros((self.max_camera_points, 3), dtype=np.float32)
-        camera_observation_padded[:len(realsense)] = realsense
-        '''
-
         observation = {
             'goal_distance': np.array(goal_distance),
             'position': np.array(uav_position),
-            'obstacles': self._normalize(laser_scan.range_min, laser_scan.range_max, ranges),
-            # 'realsense': camera_observation_padded
+            'obstacles': ranges,
         }
         return observation
 
@@ -171,14 +167,13 @@ class FSPPEnv(gym.Env):
 
         return done
     
-    def _normalize(self, min_val: float, max_val: float, values: np.array):
-        return (values - min_val) / (max_val - min_val)
-    
     def _reset_mrs_nodes(self):
         self._kill_nodes()
         self._start_nodes()
     
     def _start_nodes(self):
+        # adaptar para pegar um cenário de forma aleatória...
+        scenario = random.randint(1, self.QNT_SCENARIOS)
         subprocess.Popen(
             'roslaunch mrs_simulation simulation.launch gui:=false world_name:=forest', 
             shell=True,
