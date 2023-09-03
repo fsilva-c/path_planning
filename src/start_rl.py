@@ -3,12 +3,14 @@
 
 import rospy
 import subprocess
+from uuid import uuid4
 from uav.uav import UAV
 from RL_path_planner.fspp_env_v0 import FSPPEnv
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import EvalCallback
+from stable_baselines3.common.logger import configure
 
 uav = UAV(uav_id=1)
 
@@ -21,8 +23,13 @@ def start():
 
     rospy.init_node('rl_mission', anonymous=True)
     rospy.loginfo('Iniciando os testes...')
-    
+
     env = DummyVecEnv([lambda: Monitor(FSPPEnv())])
+
+    instance = str(uuid4().hex[:10])
+
+    # logger...
+    new_logger = configure(f'ppo_fsppenv_log_{instance}', ['stdout', 'csv'])
 
     model = PPO(
         'MultiInputPolicy',
@@ -36,13 +43,15 @@ def start():
         stats_window_size=1, # estatísticas do PPO
     )
 
+    model.set_logger(new_logger)
+
     eval_callback = EvalCallback(
         env, 
         n_eval_episodes=5,
-        best_model_save_path='.'
+        best_model_save_path=instance
     )
 
     model.learn(total_timesteps=2e5, callback=eval_callback)
-    model.save(f'DQN_training_model_PPO')
+    model.save(f'training_model_UAV_PPO_{instance}')
 
 start()

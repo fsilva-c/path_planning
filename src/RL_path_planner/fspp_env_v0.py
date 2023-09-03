@@ -17,7 +17,7 @@ mrs_env['UAV_TYPE'] = 'f450'
 mrs_env['WORLD_NAME'] = 'simulation_local'
 mrs_env['SENSORS'] = 'garmin_down'
 mrs_env['ODOMETRY_TYPE'] = 'gps'
-mrs_env['PX4_SIM_SPEED_FACTOR'] = '1'
+mrs_env['PX4_SIM_SPEED_FACTOR'] = '3'
 
 class FSPPEnv(gym.Env):
     MAX_DISTANCE = 5.0 # [m] distância máxima do goal...
@@ -53,7 +53,7 @@ class FSPPEnv(gym.Env):
             'goal_distance': spaces.Box(low=0.0, high=np.inf, shape=(1,), dtype=np.float32),
             'position': spaces.Box(low=-100.0, high=100.0, shape=(3,), dtype=np.float32),
             'obstacles': spaces.Box(low=0.0, high=1.0, shape=(720,), dtype=np.float32),
-            'realsense': spaces.Box(low=-np.inf, high=np.inf, shape=(self.max_camera_points, 3), dtype=np.float32)
+            # 'realsense': spaces.Box(low=-np.inf, high=np.inf, shape=(self.max_camera_points, 3), dtype=np.float32)
         })
 
         self.goal = None
@@ -115,6 +115,8 @@ class FSPPEnv(gym.Env):
             else:
                 reward = (prev_distance_to_goal - distance_to_goal) * 10.0 # mais pontos cada vez que se aproxima do goal...
 
+        reward -= 1
+
         return reward
     
     def _get_observation(self):
@@ -126,15 +128,17 @@ class FSPPEnv(gym.Env):
 
         # realsense camera...
         # realsense = [[0.9, 0.2, 1], [0.9, 2, -2], [3.9, 2.2, 5]]
+        '''
         realsense = list(self.uav.map_environment.get_obstacles_realsense())
         camera_observation_padded = np.zeros((self.max_camera_points, 3), dtype=np.float32)
         camera_observation_padded[:len(realsense)] = realsense
+        '''
 
         observation = {
             'goal_distance': np.array(goal_distance),
             'position': np.array(uav_position),
             'obstacles': self._normalize(laser_scan.range_min, laser_scan.range_max, ranges),
-            'realsense': camera_observation_padded
+            # 'realsense': camera_observation_padded
         }
         return observation
 
@@ -183,7 +187,7 @@ class FSPPEnv(gym.Env):
             stderr=subprocess.STDOUT)
         time.sleep(5.0)
         subprocess.Popen(
-            'rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-rplidar --enable-realsense-front --use-gpu-ray --pos 0 0 1 0"', 
+            'rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-rplidar --pos 0 0 1 0"', 
             shell=True,
             env=mrs_env,
             stdout=subprocess.DEVNULL,
@@ -197,12 +201,6 @@ class FSPPEnv(gym.Env):
         time.sleep(10.0)
         subprocess.Popen(
             'roslaunch mrs_uav_general core.launch', 
-            shell=True,
-            env=mrs_env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.STDOUT)
-        subprocess.Popen(
-            'roslaunch fs_path_planning pcl_realsense_front.launch config_pcl_filter_rs_front:=/home/fs/user_ros_workspace/src/path_planning/start/forest/custom_configs/rs_front_filter.yaml', 
             shell=True,
             env=mrs_env,
             stdout=subprocess.DEVNULL,
