@@ -62,7 +62,7 @@ def apply_distribution(scenario, sigma):
     plt.xlabel('Altura')
     plt.ylabel('Frequência')
     plt.legend()
-    plt.savefig(f'scenario_{scenario}.png')
+    plt.savefig(f'images/scenario_{scenario}.png')
     plt.clf()
 
 if __name__ == '__main__':
