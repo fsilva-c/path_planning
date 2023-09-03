@@ -114,7 +114,7 @@ class FSPPEnv(gym.Env):
                 reward = -10.0
             else:
                 reward = (prev_distance_to_goal - distance_to_goal) * 10.0 # mais pontos cada vez que se aproxima do goal...
-
+        # adicionar recompensa negativa caso esteja voando acima das árvores...
         reward -= 1
 
         return reward

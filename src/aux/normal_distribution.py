@@ -1,8 +1,5 @@
-import rospy
 import numpy as np
-from gazebo_msgs.msg import ModelState
-from gazebo_msgs.srv import SetModelState, GetModelState
-
+import xml.etree.ElementTree as ET
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 
@@ -11,8 +8,9 @@ SCENARIOS = {
     2: {'minz': 0.0, 'maxz': 4.0},
     3: {'minz': 0.0, 'maxz': 2.5},
 }
-
 N_TREES = 500
+tree = ET.parse('../../worlds/forest.world')
+root = tree.getroot()
 
 def distribution(scenario, mean, sigma):
     minz = SCENARIOS.get(scenario).get('minz')
@@ -22,32 +20,21 @@ def distribution(scenario, mean, sigma):
     return heights
 
 def apply_distribution(scenario, sigma):
-    rospy.init_node('move_gazebo_model_z')
-
-    get_model_state = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
-    set_model_state = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
-
     minz = SCENARIOS.get(scenario).get('minz')
     maxz = SCENARIOS.get(scenario).get('maxz')
     mean = (maxz + minz) / 2
     dist = distribution(scenario, mean, sigma)
 
-    for tree in range(0, N_TREES):
-        model_name = f'tree_simple{tree}'
-        new_z = -dist[tree]
+    for i, model in enumerate(root.findall('.//model')):
+        model_name = model.get('name')
+        if model_name.startswith('tree'):
+            pose_element = model.find('pose')
+            if pose_element is not None:
+                pose_value = pose_element.text.split()
+                pose_value[2] = str(-dist[i])
+                pose_element.text = ' '.join(pose_value)
 
-        model_pose = get_model_state(model_name, '').pose.position
-        model_state_msg = ModelState()
-        model_state_msg.model_name = model_name
-        model_state_msg.pose.position.x = model_pose.x
-        model_state_msg.pose.position.y = model_pose.y
-        model_state_msg.pose.position.z = new_z
-
-        try:
-            set_model_state(model_state_msg)
-        except rospy.ServiceException as e:
-            rospy.logerr("Erro ao definir a posição Z do modelo: %s", str(e))
-        rospy.sleep(0.1)
+    tree.write(f'../../worlds/tree_scenario_{scenario}.world')
 
     # save plot...
     plt.hist(dist, bins=50, density=True, alpha=0.7, color='blue')
