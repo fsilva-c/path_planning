@@ -94,7 +94,7 @@ class Movements:
         req.reference.reference.velocity = velocity
         try:
             srv_velocity_reference(req)
-            rospy.sleep(1.0)
+            rospy.sleep(0.25)
         except rospy.ServiceException as e:
             rospy.logerr(f'Erro ao chamar o serviço {srv_name}: {e}')
 

@@ -5,7 +5,13 @@ from catkin_pkg.python_setup import generate_distutils_setup
 
 setup_args = generate_distutils_setup(
     version="0.0.0",
-    packages=['classic_path_planner', 'geometry', 'RL_path_planner', 'uav'],
+    packages=[
+        'classic_path_planner', 
+        'geometry', 
+        'RL_path_planner', 
+        'uav',
+        'common'
+        ],
     package_dir={'': 'src'})
 
 setup(**setup_args)

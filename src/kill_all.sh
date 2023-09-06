@@ -1,8 +1,8 @@
 #!/bin/bash
 
-tmux kill-session -t simulation &> /dev/null
-pkill tmux &> /dev/null
-pkill -SIGINT roslaunch &> /dev/null
-pkill tmux &> /dev/null
-pkill ros &> /dev/null
-killall -9 gazebo gzserver gzclient mavros_node px4 ros &> /dev/null
+pkill roslaunch > /dev/null 2>&1
+pkill ros > /dev/null 2>&1
+pkill roscore > /dev/null 2>&1
+pkill gzserver > /dev/null 2>&1
+pkill gzclient > /dev/null 2>&1
+killall -9 gazebo gzserver gzclient mavros_node px4 ros python > /dev/null 2>&1
