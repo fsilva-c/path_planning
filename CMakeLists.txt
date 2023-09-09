@@ -5,6 +5,8 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
 )
 
+catkin_python_setup()
+
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES fs_path_planning

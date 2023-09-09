@@ -10,7 +10,7 @@ windows:
   - gazebo:
       layout: tiled
       panes:
-        - waitForRos; roslaunch mrs_simulation simulation.launch gui:=true world_name:=forest
+        - waitForRos; roslaunch mrs_simulation simulation.launch gui:=true # world_file:=/home/fs/user_ros_workspace/src/path_planning/worlds/tree_scenario_1.world # world_name:=forest
         # - waitForOdometry; gz camera -c gzclient_camera -f ${UAV_NAME}; history -s gz camera -c gzclient_camera -f ${UAV_NAME}
   - status:
       layout: tiled
@@ -32,10 +32,6 @@ windows:
           rosservice call /$UAV_NAME/mavros/cmd/arming 1;
           sleep 2;
           rosservice call /$UAV_NAME/mavros/set_mode 0 offboard'
-  - pcl_realsense_front:
-      layout: tiled
-      panes:
-        - waitForOdometry; roslaunch fs_path_planning pcl_realsense_front.launch config_pcl_filter_rs_front:=./custom_configs/rs_front_filter.yaml
   - rviz:
       layout: tiled
       panes:

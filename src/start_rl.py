@@ -4,8 +4,7 @@
 import time
 import rospy
 import subprocess
-from uuid import uuid4
-from uav.uav import UAV
+from uav_interface.uav import UAV
 from RL_path_planner.fspp_env_v0 import FSPPEnv
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv

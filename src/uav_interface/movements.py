@@ -1,6 +1,6 @@
 import rospy
 from geometry.geometry import Geometry
-from uav.uav_info import UAVInfo
+from uav_interface.uav_info import UAVInfo
 from mrs_msgs.srv import ReferenceStampedSrv, PathSrv, String, Vec1, VelocityReferenceStampedSrv
 from std_srvs.srv import Trigger, SetBool
 from mavros_msgs.srv import CommandBool, SetMode

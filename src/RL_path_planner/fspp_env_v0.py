@@ -5,7 +5,7 @@ import subprocess
 import rospy
 import pathlib
 import numpy as np
-from uav.uav import UAV
+from uav_interface.uav import UAV
 from geometry.geometry import Geometry
 from geometry_msgs.msg import Vector3
 

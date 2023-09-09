@@ -24,7 +24,7 @@ class PositionCollector:
                 z = position.z
 
                 with open(f'uav1-{self.start_time}.txt', 'a') as f:
-                    f.write(f'{x}, {y}, {z}\n')
+                    f.write(f'{rospy.get_time()}, {x}, {y}, {z}\n')
 
     def start_collecting(self):
         self.is_collect = True
