@@ -10,7 +10,7 @@ windows:
   - gazebo:
       layout: tiled
       panes:
-        - waitForRos; roslaunch mrs_simulation simulation.launch gui:=true # world_file:=/home/fs/user_ros_workspace/src/path_planning/worlds/tree_scenario_1.world # world_name:=forest
+        - waitForRos; roslaunch mrs_simulation simulation.launch gui:=false world_file:=/home/fs/user_ros_workspace/src/path_planning/worlds/tree_scenario_1.world # world_name:=forest
         # - waitForOdometry; gz camera -c gzclient_camera -f ${UAV_NAME}; history -s gz camera -c gzclient_camera -f ${UAV_NAME}
   - status:
       layout: tiled

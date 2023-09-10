@@ -19,18 +19,18 @@ class AStar:
             self,
             threshold: float, 
             dg: DiscreteGrid, 
-            obstacles
+            obstacles: KDTree
         ) -> None:
         self.threshold = threshold
         self.dg = dg
-        self.kd_tree = KDTree(obstacles)
+        self.kd_tree = obstacles
 
     def heuristic(self, node, goal) -> float:
         return Geometry.euclidean_distance(node.position, goal.position)
 
     def is_valid(self, node: list) -> bool:
         continuous_node = self.dg.discrete_to_continuous(node)
-        indices = self.kd_tree.query_ball_point(continuous_node, self.threshold)
+        indices = self.kd_tree.query_ball_point(continuous_node, self.threshold * 2)
         return not indices
 
     def get_neighbours(self, node: Node):
@@ -78,6 +78,6 @@ class AStar:
                     neighbour.parent = current_node
                     open_dict[neighbour.position] = neighbour
 
-        raise Exception('No path found')
+        return []
 
     

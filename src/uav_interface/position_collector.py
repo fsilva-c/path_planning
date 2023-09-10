@@ -22,6 +22,7 @@ class PositionCollector:
                 x = position.x
                 y = position.y
                 z = position.z
+                print(rospy.get_time(), x, y, z)
 
                 with open(f'uav1-{self.start_time}.txt', 'a') as f:
                     f.write(f'{rospy.get_time()}, {x}, {y}, {z}\n')
