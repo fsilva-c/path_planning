@@ -7,7 +7,7 @@ from uav_interface.position_collector import PositionCollector
 from classic_path_planner.path_planner import PathPlanner
 
 uav = UAV(uav_id=1)
-pp = PathPlanner(goal=[10.1, -1.1, 3.5])
+pp = PathPlanner(goal=[15.5, 8.8, 1.0])
 collector = PositionCollector()
 
 def start():

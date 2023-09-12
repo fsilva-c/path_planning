@@ -201,6 +201,7 @@ class FSPPEnv(gym.Env):
             env=mrs_env,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.STDOUT)
+        time.sleep(1.0)
         subprocess.Popen(
             'roslaunch mrs_uav_general automatic_start.launch', 
             shell=True,

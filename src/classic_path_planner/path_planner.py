@@ -48,11 +48,11 @@ class PathPlanner:
             if self.current_state == StatePlanner.PLANNING:
                 self.path_plan()
                 self.current_state = StatePlanner.MOVING
-                rospy.sleep(5.0)
+                rospy.sleep(10.0)
             
             elif self.current_state == StatePlanner.MOVING:
                 if (not self.free_current_path() and 
-                    self.distance_to_closest_obstacle() < self.threshold * 3):
+                    self.distance_to_closest_obstacle() < self.threshold * 2):
                     self.current_state = StatePlanner.OBSTACLE_FOUND
                 if self.uav.movements.in_target(list(self.goal)):
                     self.current_state = StatePlanner.GOAL_REACHED

@@ -30,8 +30,10 @@ class AStar:
 
     def is_valid(self, node: list) -> bool:
         continuous_node = self.dg.discrete_to_continuous(node)
-        indices = self.kd_tree.query_ball_point(continuous_node, self.threshold * 2)
-        return not indices
+        if continuous_node[2] < 0.5: # evitar expandir nós com z muito baixo...
+            return False
+        distance, _ = self.kdtree.query(continuous_node, k=1)
+        return distance > self.threshold * 2
 
     def get_neighbours(self, node: Node):
         x, y, z = node.position

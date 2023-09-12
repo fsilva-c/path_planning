@@ -24,7 +24,7 @@ class FSPP_RPLidar:
             points = PointCloud()
             points.header.stamp = rospy.Time.now()
             for obstacle in self.obstacles_rplidar():
-                for z in np.linspace(uav_position.z - 1.0, uav_position.z + 2.0, num=5):
+                for z in np.linspace(uav_position.z - 1.0, uav_position.z + 2.0, num=3):
                     point = Point32()
                     point.x, point.y = obstacle
                     point.z = z
