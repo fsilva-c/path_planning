@@ -8,8 +8,10 @@ import numpy as np
 from uav_interface.uav import UAV
 from geometry.geometry import Geometry
 from geometry_msgs.msg import Vector3
+from std_srvs.srv import Empty
 
 import gym
+from gym.utils import seeding
 from gym import spaces
 
 mrs_env = os.environ.copy()
@@ -52,6 +54,7 @@ class FSPPEnv(gym.Env):
 
     def __init__(self, uav_id=1, goal=None) -> None:
         self.uav = UAV(uav_id=uav_id)
+        self.seed()
 
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(3,), dtype=np.float32)
         self.observation_space = spaces.Dict({
@@ -75,10 +78,20 @@ class FSPPEnv(gym.Env):
         self.initial_distance_to_goal = None
         self.n_hits_on_taget = 0
 
+        # gazebo comms...
+        self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
+        self.pause = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
+
     def step(self, action):
+        self.unpause()
         velocity = Vector3(*action)
         uav_position = self.uav.uav_info.get_uav_position(tolist=True)
         self.uav.movements.apply_velocity(velocity)
+        self.pause()
 
         observation = self._get_observation()
         reward = self._calculate_reward(uav_position)
@@ -139,14 +152,14 @@ class FSPPEnv(gym.Env):
     
     def _get_observation(self):
         laser_scan = self.uav.uav_info.get_laser_scan()
-        ranges = np.array(laser_scan.ranges)
+        ranges = np.array(laser_scan.ranges, dtype=np.float32)
         ranges[np.isinf(ranges)] = laser_scan.range_max
         uav_position = self.uav.uav_info.get_uav_position(tolist=True)
         goal_distance = Geometry.euclidean_distance(uav_position, self.goal)
 
         observation = {
-            'goal_distance': goal_distance,
-            'position': np.array(uav_position),
+            'goal_distance': np.array([goal_distance], dtype=np.float32),
+            'position': np.array(uav_position, dtype=np.float32),
             'obstacles': ranges,
         }
         return observation

@@ -88,13 +88,13 @@ class Movements:
 
     def apply_velocity(self, velocity):
         srv_name = f'/uav{self.uav_id}/control_manager/velocity_reference'
-        rospy.wait_for_service(srv_name)
         srv_velocity_reference = rospy.ServiceProxy(srv_name, VelocityReferenceStampedSrv)
+        rospy.wait_for_service(srv_name)
         req = VelocityReferenceStampedSrv._request_class()
         req.reference.reference.velocity = velocity
         try:
             srv_velocity_reference(req)
-            rospy.sleep(0.25)
+            # rospy.sleep(0.25)
         except rospy.ServiceException as e:
             rospy.logerr(f'Erro ao chamar o serviço {srv_name}: {e}')
 
