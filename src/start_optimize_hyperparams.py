@@ -9,7 +9,6 @@ from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.env_checker import check_env
 
-
 def optimize_ppo(trial):
     n_steps = trial.suggest_int('n_steps', 1024, 2048)
     n_envs = 1
@@ -27,10 +26,9 @@ def optimize_ppo(trial):
 def optimize_agent(trial):
     model_params = optimize_ppo(trial)
     env = DummyVecEnv([lambda: Monitor(FSPPEnv())])
-    print(check_env(env))
-    model = PPO('MultiInputPolicy', env, verbose=0, device='cuda', **model_params)
+    model = PPO('MultiInputPolicy', env, verbose=1, device='cuda', **model_params)
     model.learn(10000)
-    mean_reward, _ = evaluate_policy(model, FSPPEnv(), n_eval_episodes=10)
+    mean_reward, _ = evaluate_policy(model, env, n_eval_episodes=10)
     return -1 * mean_reward
 
 if __name__ == '__main__':
