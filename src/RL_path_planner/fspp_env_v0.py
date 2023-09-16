@@ -21,7 +21,7 @@ mrs_env['UAV_TYPE'] = 'f450'
 mrs_env['WORLD_NAME'] = 'simulation_local'
 mrs_env['SENSORS'] = 'garmin_down'
 mrs_env['ODOMETRY_TYPE'] = 'gps'
-mrs_env['PX4_SIM_SPEED_FACTOR'] = '8'
+mrs_env['PX4_SIM_SPEED_FACTOR'] = '3'
 
 filepath = pathlib.Path(__file__).resolve().parent
 worlds_dir = filepath.parent.parent

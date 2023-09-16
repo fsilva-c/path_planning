@@ -1,5 +1,6 @@
 ### Python ###
 
+src/ppo_fsppenv_log/
 test_*.py
 
 # Byte-compiled / optimized / DLL files

@@ -31,16 +31,23 @@ def start():
     # logger...
     new_logger = configure(f'ppo_fsppenv_log', ['stdout', 'csv'])
 
+    model_params = {
+        'n_steps': 1024,
+        'batch_size': 32,
+        'gamma': 0.9953295022725661, 
+        'learning_rate': 0.000990097133814429, 
+        'ent_coef': 0.0010103559410986254, 
+        'n_epochs': 10, 
+        'gae_lambda': 0.9191725806525997
+    }
+
     model = PPO(
         'MultiInputPolicy',
         env,
         verbose=1,
         device='cuda',
-        batch_size=128,
-        n_steps=2048,
-        learning_rate=0.00025,
-        gamma=0.95,
         stats_window_size=1, # estatísticas do PPO
+        **model_params
     )
 
     model.set_logger(new_logger)
