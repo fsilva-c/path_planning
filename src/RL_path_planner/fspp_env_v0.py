@@ -87,11 +87,11 @@ class FSPPEnv(gym.Env):
         return [seed]
 
     def step(self, action):
-        self.unpause()
+        # self.unpause()
         velocity = Vector3(*action)
         uav_position = self.uav.uav_info.get_uav_position(tolist=True)
         self.uav.movements.apply_velocity(velocity)
-        self.pause()
+        # self.pause()
 
         observation = self._get_observation()
         reward = self._calculate_reward(uav_position)
