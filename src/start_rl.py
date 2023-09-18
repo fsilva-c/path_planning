@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
 import time
 import rospy
 import subprocess
@@ -29,7 +30,7 @@ def start():
     env = DummyVecEnv([lambda: Monitor(FSPPEnv())])
 
     # logger...
-    new_logger = configure(f'ppo_fsppenv_log', ['stdout', 'csv'])
+    new_logger = configure('ppo_fsppenv_log', ['stdout', 'csv'])
 
     model_params = {
         'n_steps': 1024,
@@ -48,7 +49,7 @@ def start():
         device='cuda',
         stats_window_size=1, # estatísticas do PPO
         **model_params
-    )
+    ) if 'best_model.zip' not in os.listdir('.') else PPO.load('best_model.zip', env=env)
 
     model.set_logger(new_logger)
 

@@ -2,6 +2,7 @@ import os
 import random
 import time
 import subprocess
+import threading
 import rospy
 import pathlib
 import numpy as np
@@ -21,7 +22,7 @@ mrs_env['UAV_TYPE'] = 'f450'
 mrs_env['WORLD_NAME'] = 'simulation_local'
 mrs_env['SENSORS'] = 'garmin_down'
 mrs_env['ODOMETRY_TYPE'] = 'gps'
-mrs_env['PX4_SIM_SPEED_FACTOR'] = '3'
+mrs_env['PX4_SIM_SPEED_FACTOR'] = '6'
 
 filepath = pathlib.Path(__file__).resolve().parent
 worlds_dir = filepath.parent.parent
@@ -105,19 +106,27 @@ class FSPPEnv(gym.Env):
             rospy.logerr('[FSPP.step]: NAN action')
 
         return observation, reward, done, info
+    
+    def perform_takeoff(self):
+        self.uav.movements.takeoff()
 
     def reset(self):
         self._reset_mrs_nodes()
 
         # checar tempo maximo para takeoff
-        self.uav.movements.takeoff()
+        takeoff_thread = threading.Thread(target=self.perform_takeoff)
+        takeoff_thread.start()
+        takeoff_thread.join(timeout=15)
+        if takeoff_thread.is_alive(): # se não decolar em 15s, reseta o env...
+            rospy.loginfo('[FSPPEnv.reset]: uav não decolou... resetando env...')
+            self._reset_mrs_nodes()
 
         # gera um novo goal a cada self.N_HITS_RESET_GOAL (acerto) no target...
         if self.n_hits_on_taget % self.N_HITS_RESET_GOAL == 0:
             self.goal = self._generate_random_goal()
 
         self.initial_distance_to_goal = Geometry.euclidean_distance(
-            [0.0, 0.0, 2.0], self.goal)
+            self.uav.uav_info.get_uav_position(tolist=True), self.goal)
         
         rospy.loginfo('[FSPPEnv.reset]: env resetado')
 
