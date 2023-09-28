@@ -60,6 +60,6 @@ def start():
     )
 
     model.learn(total_timesteps=2e5, callback=eval_callback)
-    model.save(f'training_model_UAV_PPO')
+    model.save('training_model_UAV_PPO')
 
 start()

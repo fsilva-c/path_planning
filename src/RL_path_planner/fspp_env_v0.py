@@ -2,11 +2,11 @@ import os
 import random
 import time
 import subprocess
-import threading
 import rospy
 import pathlib
 import numpy as np
 from uav_interface.uav import UAV
+from RL_path_planner.ros_waiter import ROSWaiter
 from geometry.geometry import Geometry
 from geometry_msgs.msg import Vector3
 from std_srvs.srv import Empty
@@ -26,6 +26,9 @@ mrs_env['PX4_SIM_SPEED_FACTOR'] = '6'
 
 filepath = pathlib.Path(__file__).resolve().parent
 worlds_dir = filepath.parent.parent
+
+ros_macros = os.path.join(filepath.parent, 'ros_macros.sh')
+subprocess.Popen(f'bash -c "source {ros_macros}"', shell=True)
 
 class FSPPEnv(gym.Env):
     MAX_DISTANCE = 5.0 # [m] distância máxima do goal...
@@ -83,6 +86,9 @@ class FSPPEnv(gym.Env):
         self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
         self.pause = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
 
+        # mrs ros nodes...
+        self.ros_waiter = ROSWaiter('uav1')
+
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
@@ -106,20 +112,11 @@ class FSPPEnv(gym.Env):
             rospy.logerr('[FSPP.step]: NAN action')
 
         return observation, reward, done, info
-    
-    def perform_takeoff(self):
-        self.uav.movements.takeoff()
 
     def reset(self):
+        rospy.loginfo('[FSPPEnv.reset]: antes _reset_mrs_nodes')
         self._reset_mrs_nodes()
-
-        # checar tempo maximo para takeoff
-        takeoff_thread = threading.Thread(target=self.perform_takeoff)
-        takeoff_thread.start()
-        takeoff_thread.join(timeout=15)
-        if takeoff_thread.is_alive(): # se não decolar em 15s, reseta o env...
-            rospy.loginfo('[FSPPEnv.reset]: uav não decolou... resetando env...')
-            self._reset_mrs_nodes()
+        rospy.loginfo('[FSPPEnv.reset]: depois _reset_mrs_nodes')
 
         # gera um novo goal a cada self.N_HITS_RESET_GOAL (acerto) no target...
         if self.n_hits_on_taget % self.N_HITS_RESET_GOAL == 0:
@@ -210,34 +207,42 @@ class FSPPEnv(gym.Env):
         # obtém um cenário de forma aleatória...
         scenario = random.randint(1, self.N_SCENARIOS)
         world_file = f'{worlds_dir}/worlds/tree_scenario_{scenario}.world'
-        subprocess.Popen(
-            f'roslaunch mrs_simulation simulation.launch gui:=false world_file:={world_file}', 
-            shell=True,
-            env=mrs_env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.STDOUT)
-        time.sleep(5.0)
-        subprocess.Popen(
-            'rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-rplidar --pos 0 0 1 0"', 
-            shell=True,
-            env=mrs_env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.STDOUT)
-        time.sleep(1.0)
-        subprocess.Popen(
-            'roslaunch mrs_uav_general automatic_start.launch', 
-            shell=True,
-            env=mrs_env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.STDOUT)
-        time.sleep(10.0)
-        subprocess.Popen(
-            'roslaunch mrs_uav_general core.launch', 
-            shell=True,
-            env=mrs_env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL)
-        time.sleep(5.0)
+
+        # gazebo simulation
+        self._start_mrs_node(
+            f'roslaunch mrs_simulation simulation.launch gui:=false world_file:={world_file}',
+            waiter=self.ros_waiter.wait_for_ros)
+        
+        # uav_general automatic_start...
+        self._start_mrs_node(
+            'roslaunch mrs_uav_general automatic_start.launch',
+            waiter=self.ros_waiter.wait_for_simulation)
+        
+        # spawner...
+        self._start_mrs_node(
+            'rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-rplidar --pos 0 0 1 0"',
+            waiter=self.ros_waiter.wait_for_simulation)
+
+        # uav_general core...
+        self._start_mrs_node('roslaunch mrs_uav_general core.launch',
+            waiter=self.ros_waiter.wait_for_odometry)
+
+        # takeoff
+        self._start_mrs_node(
+            """
+            rosservice call /$UAV_NAME/mavros/cmd/arming 1;
+            sleep 2;
+            rosservice call /$UAV_NAME/mavros/set_mode 0 offboard
+            """,
+            waiter=self.ros_waiter.wait_for_control)
+
+        # time.sleep(10)
+
+        # aguarda enquanto o uav não decola...
+        rospy.loginfo('[FSPPEnv._start_nodes]: aguardando drone decolar...')
+        while self.uav.uav_info.get_active_tracker() != 'MpcTracker':
+            rospy.sleep(0.1)
+        rospy.loginfo('[FSPPEnv._start_nodes]: drone em voo...')
 
     def _kill_nodes(self):
         kill_path = os.path.join(filepath.parent, 'kill.sh')
@@ -246,6 +251,16 @@ class FSPPEnv(gym.Env):
             stdout=subprocess.DEVNULL,
             stderr=subprocess.STDOUT)
         time.sleep(2.0)
+
+    def _start_mrs_node(self, command, waiter):
+        rospy.loginfo(f'[FSPPEnv._start_mrs_node]: cmd: {command}')
+        subprocess.Popen(
+            command,
+            shell=True,
+            env=mrs_env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT)
+        waiter()
 
     def render(self):
         ...

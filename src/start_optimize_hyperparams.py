@@ -10,11 +10,12 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.logger import configure
 
 def optimize_ppo(trial):
     return {
         'batch_size': trial.suggest_categorical('batch_size', [8, 16, 32, 64, 128, 256, 512]),
-        'n_steps': trial.suggest_categorical('n_steps', [8, 16, 32, 64, 128, 256, 512, 1024, 2048]),
+        'n_steps': trial.suggest_categorical('n_steps', [64, 128, 256, 512, 1024, 2048]),
         'gamma': trial.suggest_float('gamma', 0.9, 0.9999),
         'learning_rate': trial.suggest_float('learning_rate', 1e-8, 1e-1),
         'ent_coef': trial.suggest_float('ent_coef', 1e-8, 1e-1),
@@ -23,13 +24,19 @@ def optimize_ppo(trial):
     }
 
 def optimize_agent(trial):
-    model_params = optimize_ppo(trial)
-    env = DummyVecEnv([lambda: Monitor(FSPPEnv())])
-    model = PPO('MultiInputPolicy', env, verbose=0, device='cuda', **model_params)
-    model.learn(10000)
-    mean_reward, _ = evaluate_policy(model, env, n_eval_episodes=10)
-    return -1 * mean_reward
-
+    try:
+        model_params = optimize_ppo(trial)
+        env = DummyVecEnv([lambda: Monitor(FSPPEnv())])
+        model = PPO('MultiInputPolicy', env, verbose=0, device='cuda', **model_params)
+        new_logger = configure(f'ppo_fsppenv_log_{trial.number}', ['stdout', 'csv'])
+        model.set_logger(new_logger)
+        model.learn(1000)
+        mean_reward, _ = evaluate_policy(model, env, n_eval_episodes=50)
+        return -1 * mean_reward
+    except Exception as e:
+        print(f'Trial falhou devido a um erro: {e}')
+        return optuna.TrialPruned
+    
 if __name__ == '__main__':
     print('Realizando tuning dos hyperparâmetros...')
     subprocess.Popen(
@@ -42,6 +49,6 @@ if __name__ == '__main__':
     rospy.loginfo('Iniciando os testes...')
     study = optuna.create_study()
     try:
-        study.optimize(optimize_agent, n_trials=100, n_jobs=1, show_progress_bar=True)
+        study.optimize(optimize_agent, n_trials=100, timeout=600)
     except KeyboardInterrupt:
         print('Interrupted by keyboard.')

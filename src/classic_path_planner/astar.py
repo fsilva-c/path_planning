@@ -17,8 +17,8 @@ class Node:
 class AStar:
     def __init__(
             self,
-            threshold: float, 
-            dg: DiscreteGrid, 
+            threshold: float,
+            dg: DiscreteGrid,
             obstacles: KDTree
         ) -> None:
         self.threshold = threshold

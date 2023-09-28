@@ -20,8 +20,10 @@ def start():
     while rospy.get_time() <= 25.0 or uav.uav_info.get_active_tracker() == 'NullTracker':
         rospy.sleep(0.1)
 
-    collector.start_collecting()
-    pp.run()
-    collector.stop_collecting()
+    # collector.start_collecting()
+    # collector.stop_collecting()
+    obs = uav.map_environment.expand_obstacles()
+    # pp.run()
+    print(obs)
 
 start()
