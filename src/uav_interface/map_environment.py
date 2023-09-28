@@ -18,7 +18,7 @@ class MapEnvironment:
     
     def get_tree_clusters(self): # pegar as árvores de forma agrupada...
         points = list(self.get_obstacles_rplidar())
-        dbscan = DBSCAN(eps=0.5)
+        dbscan = DBSCAN(eps=0.6)
         dbscan.fit(points)
         labels = dbscan.labels_
         clusters = {}
@@ -28,39 +28,41 @@ class MapEnvironment:
             clusters[label].append(points[i])
         return clusters
     
-    def expand_obstacles(self):
+    def get_obstacles_3D(self):
         obstacles = []
 
         # Função de erro para minimização
-        def erro_circulo(params, pontos):
+        def err_circle(params, points):
             cx, cy, r = params
-            erro = 0
-            for x, y in pontos:
-                erro += ((x - cx) ** 2 + (y - cy) ** 2 - r ** 2) ** 2
-            return erro
+            error = 0
+            for x, y in points:
+                error += ((x - cx) ** 2 + (y - cy) ** 2 - r ** 2) ** 2
+            return error
 
         for _, cluster_points in self.get_tree_clusters().items():
             points_x, points_y = zip(*cluster_points)
             points = np.array([points_x, points_y]).T
 
-            # Estimativa inicial do centro e raio (média das coordenadas)
+            # Estimativa inicial do centro e radius (média das coordenadas)
             cx_initial = np.mean(points[:, 0])
             cy_initial = np.mean(points[:, 1])
             r_initial = np.mean(np.sqrt((points[:, 0] - cx_initial) ** 2 + (points[:, 1] - cy_initial) ** 2))
 
-            # Minimização para encontrar o centro e o raio
-            resultado = minimize(erro_circulo, [cx_initial, cy_initial, r_initial], args=(points,), method='L-BFGS-B')
+            # Minimização para encontrar o centro e o radius
+            result = minimize(err_circle, [cx_initial, cy_initial, r_initial], args=(points,), method='L-BFGS-B')
 
             # Extrair os parâmetros do círculo otimizado
-            cx_optimized, cy_optimized, r_optimized = resultado.x
+            cx_optimized, cy_optimized, r_optimized = result.x
             center_x, center_y = cx_optimized, cy_optimized
-            raio = r_optimized
+            radius = r_optimized
+            if radius > 5.0: # avoid noise...
+                continue
             n = 10
             angles = np.linspace(0, 2 * np.pi, n)
 
             # Calcula as coordenadas x e y dos pontos no círculo
-            x_points = center_x + raio * np.cos(angles)
-            y_points = center_y + raio * np.sin(angles)
+            x_points = center_x + radius * np.cos(angles)
+            y_points = center_y + radius * np.sin(angles)
 
             # Ângulos igualmente espaçados em torno do círculo
             angles = np.linspace(0, 2 * np.pi, n)
@@ -69,9 +71,9 @@ class MapEnvironment:
             # Simulando a esfera
             theta, phi = np.meshgrid(angles, inclination)
 
-            x_points = center_x + raio * np.sin(phi) * np.cos(theta)
-            y_points = center_y + raio * np.sin(phi) * np.sin(theta)
-            z_pontos = raio * np.cos(phi)
+            x_points = center_x + radius * np.sin(phi) * np.cos(theta)
+            y_points = center_y + radius * np.sin(phi) * np.sin(theta)
+            z_pontos = radius * np.cos(phi)
 
             # Flatten as coordenadas
             x_points = x_points.flatten()

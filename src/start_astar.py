@@ -22,7 +22,7 @@ def start():
 
     # collector.start_collecting()
     # collector.stop_collecting()
-    obs = uav.map_environment.expand_obstacles()
+    obs = uav.map_environment.get_obstacles_3D()
     # pp.run()
     print(obs)
 
