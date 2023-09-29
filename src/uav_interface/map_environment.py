@@ -82,3 +82,32 @@ class MapEnvironment:
             obstacles.extend(list(zip(x_points, y_points, z_pontos)))
 
         return obstacles
+    
+    def get_sphere_cloud(self):
+        obstacles = []
+
+        # Função de erro para minimização
+        def err_circle(params, points):
+            cx, cy, r = params
+            error = 0
+            for x, y in points:
+                error += ((x - cx) ** 2 + (y - cy) ** 2 - r ** 2) ** 2
+            return error
+
+        for _, cluster_points in self.get_tree_clusters().items():
+            points_x, points_y = zip(*cluster_points)
+            points = np.array([points_x, points_y]).T
+
+            # Estimativa inicial do centro e radius (média das coordenadas)
+            cx_initial = np.mean(points[:, 0])
+            cy_initial = np.mean(points[:, 1])
+            r_initial = np.mean(np.sqrt((points[:, 0] - cx_initial) ** 2 + (points[:, 1] - cy_initial) ** 2))
+
+            # Minimização para encontrar o centro e o radius
+            result = minimize(err_circle, [cx_initial, cy_initial, r_initial], args=(points,), method='L-BFGS-B')
+
+            # Extrair os parâmetros do círculo otimizado
+            cx_optimized, cy_optimized, r_optimized = result.x
+            if r_optimized > 5.0: # avoid noise...
+                continue
+            yield cx_optimized, cy_optimized, r_optimized

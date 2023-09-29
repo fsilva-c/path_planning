@@ -19,11 +19,11 @@ class AStar:
             self,
             threshold: float,
             dg: DiscreteGrid,
-            obstacles: KDTree
+            obstacles
         ) -> None:
         self.threshold = threshold
         self.dg = dg
-        self.kd_tree = obstacles
+        self.obstacles = obstacles
 
     def heuristic(self, node, goal) -> float:
         return Geometry.euclidean_distance(node.position, goal.position)
@@ -32,8 +32,14 @@ class AStar:
         continuous_node = self.dg.discrete_to_continuous(node)
         if continuous_node[2] < 0.5: # evitar expandir nós com z muito baixo...
             return False
-        distance, _ = self.kdtree.query(continuous_node, k=1)
-        return distance > self.threshold * 2
+        # distance, _ = self.kdtree.query(continuous_node, k=1)
+        # return distance > self.threshold * 2
+        for sphere in self.obstacles.spheres:
+            distance = Geometry.euclidean_distance(
+                [sphere.center.x, sphere.center.y, sphere.center.z], continuous_node)
+            if distance < sphere.radius + self.threshold * 2: # 2x raio do drone...
+                return False
+        return True
 
     def get_neighbours(self, node: Node):
         x, y, z = node.position

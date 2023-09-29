@@ -10,14 +10,11 @@ from sensor_msgs.msg import LaserScan, PointCloud2
 uav = UAV(uav_id=1)
 
 class FSPP_RPLidar:
-    def __init__(self) -> None:
-        self.laser_scan = LaserScan()
-        
+    def __init__(self) -> None:        
         self.pub = rospy.Publisher('/fspp_classical/rplidar_3D', PointCloud2, queue_size=10)
 
         rate = rospy.Rate(10)
         while not rospy.is_shutdown():
-            # uav_position = uav.uav_info.get_uav_position()
             obstacles = uav.map_environment.get_obstacles_3D()
             header = Header()
             header.frame_id = 'uav1/fcu'

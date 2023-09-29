@@ -7,7 +7,7 @@ from uav_interface.position_collector import PositionCollector
 from classic_path_planner.path_planner import PathPlanner
 
 uav = UAV(uav_id=1)
-pp = PathPlanner(goal=[15.5, 8.8, 1.0])
+pp = PathPlanner(goal=[-2.5, 15, 2.0])
 collector = PositionCollector()
 
 def start():
@@ -22,8 +22,6 @@ def start():
 
     # collector.start_collecting()
     # collector.stop_collecting()
-    obs = uav.map_environment.get_obstacles_3D()
-    # pp.run()
-    print(obs)
+    pp.run()
 
 start()

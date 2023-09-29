@@ -1,8 +1,10 @@
 import rospy
-from sensor_msgs.msg import PointCloud
+import sensor_msgs.point_cloud2 as pc2
 from classic_path_planner.astar import AStar
 from time import perf_counter
 from uav_interface.uav import UAV
+from sensor_msgs.msg import PointCloud2
+from fs_path_planning.msg import SphereCloud
 from geometry.geometry import Geometry
 from geometry.discrete_grid import DiscreteGrid
 from scipy.spatial import KDTree
@@ -34,7 +36,8 @@ class PathPlanner:
         self.point_cloud = []
         self.kdtree = None
 
-        rospy.Subscriber('/fspp_classical/rplidar', PointCloud, self.callback_obstacles)
+        rospy.Subscriber('/fspp_classical/rplidar_3D', PointCloud2, self.callback_obstacles)
+        rospy.Subscriber('/fspp_classical/spheres_cloud', SphereCloud, self.callback_sphere_cloud)
 
     def run(self) -> None:
         uav_position = self.uav.uav_info.get_uav_position()
@@ -68,17 +71,16 @@ class PathPlanner:
         kdtree = self.obstacles()
         distance, _ = kdtree.query(uav_position, k=1)
         return distance
+    
 
-    def callback_obstacles(self, data: PointCloud) -> None:
-        uav_position = self.uav.uav_info.get_uav_position()
-        # self.point_cloud = [
-        #     (p.x + uav_position.x, p.y + uav_position.y, p.z + uav_position.z)
-        #     for p in data.points
-        # ]
-        self.point_cloud =[
-            (p.x + uav_position.x, p.y + uav_position.y, p.z)
-            for p in data.points
-        ]
+    def callback_sphere_cloud(self, data: SphereCloud):
+        self.sphere_cloud = data
+
+
+
+    def callback_obstacles(self, data: PointCloud2) -> None:
+        pc_data = pc2.read_points(data, field_names=('x', 'y', 'z'), skip_nans=True)
+        self.point_cloud = list(pc_data)
     
     def obstacles(self):
         return KDTree(self.point_cloud)
@@ -100,15 +102,15 @@ class PathPlanner:
 
         time_start = perf_counter()
         rospy.loginfo('[PathPlanner]: Encontrando o caminho...')
-        kdtree = self.obstacles()
+        # kdtree = self.obstacles()
         path = AStar(
             threshold=self.threshold,
             dg=self.dg,
-            obstacles=kdtree
+            obstacles=self.sphere_cloud
         ).find_path(start=self.start, goal=self.goal)[2:]
 
         path.append(self.goal)
         self.current_path = path
         rospy.loginfo('[PathPlanner]: Caminho encontrado...')
         rospy.loginfo(f'[PathPlanner]: O planejamento levou {round(perf_counter() - time_start, 5)}s para ser concluído...')
-        self.uav.movements.goto_trajectory(path, fly_now=True)
+        self.uav.movements.goto_trajectory(path, fly_now=False)
