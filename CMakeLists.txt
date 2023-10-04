@@ -5,10 +5,11 @@ project(fs_path_planning)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  message_runtime
-  message_generation
-  geometry_msgs
+  roscpp
   rospy
+  message_generation
+  message_runtime
+  geometry_msgs
   std_msgs
 )
  
@@ -17,7 +18,12 @@ add_message_files(
   FILES
   Sphere.msg
   SphereCloud.msg
-  # Message2.msg
+  PointList.msg
+)
+
+add_service_files(
+  FILES
+  Astar.srv
 )
  
 ## Generate added messages and services with any dependencies listed here
@@ -39,17 +45,14 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES quadrotor_receive
-CATKIN_DEPENDS message_generation message_runtime rospy std_msgs
+CATKIN_DEPENDS message_generation message_runtime rospy roscpp std_msgs
 #  DEPENDS system_lib
 )
- 
-###########
-## Build ##
-###########
- 
-## Specify additional locations of header files
-## Your package locations should be listed before other locations
+
 include_directories(
-# include
+  src/classic_path_planner/astar
   ${catkin_INCLUDE_DIRS}
 )
+
+add_executable(astar src/classic_path_planner/astar/astar.cpp)
+target_link_libraries(astar ${catkin_LIBRARIES})

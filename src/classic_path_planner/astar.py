@@ -1,7 +1,7 @@
 from itertools import product
-from scipy.spatial import KDTree
 from geometry.geometry import Geometry
 from geometry.discrete_grid import DiscreteGrid
+from geometry.kdtree import Sphere, KDTree
 
 class Node:
     def __init__(self, position):
@@ -25,29 +25,39 @@ class AStar:
         self.dg = dg
         self.obstacles = obstacles
 
+        self.spheres = [
+            Sphere((sphere.center.x, sphere.center.y, sphere.center.z), sphere.radius)
+            for sphere in obstacles.spheres]
+        self.kdtree = KDTree(self.spheres)
+
     def heuristic(self, node, goal) -> float:
         return Geometry.euclidean_distance(node.position, goal.position)
 
     def is_valid(self, node: list) -> bool:
         continuous_node = self.dg.discrete_to_continuous(node)
-        if continuous_node[2] < 0.5: # evitar expandir nós com z muito baixo...
+        node_z = continuous_node[2]
+        if not (0.5 <= node_z <= 6.0):
             return False
-        # distance, _ = self.kdtree.query(continuous_node, k=1)
-        # return distance > self.threshold * 2
-        for sphere in self.obstacles.spheres:
-            distance = Geometry.euclidean_distance(
-                [sphere.center.x, sphere.center.y, sphere.center.z], continuous_node)
-            if distance < sphere.radius + self.threshold * 2: # 2x raio do drone...
-                return False
+        return not self.kdtree.is_point_near_sphere(continuous_node, self.threshold * 2)
+
+        '''
+        distances = [
+            Geometry.euclidean_distance([sphere.center.x, sphere.center.y, sphere.center.z], continuous_node)
+            for sphere in self.obstacles.spheres]
+        
+        if any(distance < (sphere.radius + self.threshold * 2.0) for distance, sphere in zip(distances, self.obstacles.spheres)):
+            return False
+
         return True
+        '''
 
     def get_neighbours(self, node: Node):
         x, y, z = node.position
         deltas = [d for d in product((-1, 0, 1), repeat=3) if any(d)]
-        for dx, dy, dz in deltas:
-            new_node = Node((x + dx, y + dy, z + dz))
-            if self.is_valid(new_node.position):
-                yield new_node
+        return [
+            Node((x + dx, y + dy, z + dz))
+            for dx, dy, dz in deltas 
+            if self.is_valid((x + dx, y + dy, z + dz))]
 
     def find_path(self, start, goal):
         start_discrete = self.dg.continuous_to_discrete(start)
@@ -74,7 +84,8 @@ class AStar:
                 if neighbour.position in closed_set:
                     continue
 
-                g = current_node.g + 1
+                g = current_node.g + Geometry.euclidean_distance(
+                    current_node.position, neighbour.position)
                 if neighbour.position in open_dict:
                     if g < open_dict[neighbour.position].g:
                         open_dict[neighbour.position].g = g

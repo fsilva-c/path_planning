@@ -32,7 +32,8 @@ class PathPlanner:
         self.current_path = []
         self.start = []
 
-         # obstaculos...
+        # obstaculos...
+        self.sphere_cloud = None
         self.point_cloud = []
         self.kdtree = None
 
@@ -47,6 +48,9 @@ class PathPlanner:
             f'[PathPlanner]: Start {uav_position.x, uav_position.y, uav_position.z}; Goal: {self.goal}...'  # noqa: E501
         )
 
+        self.path_plan()
+        return
+
         while self.current_state != StatePlanner.GOAL_REACHED:
             if self.current_state == StatePlanner.PLANNING:
                 self.path_plan()
@@ -54,8 +58,7 @@ class PathPlanner:
                 rospy.sleep(10.0)
             
             elif self.current_state == StatePlanner.MOVING:
-                if (not self.free_current_path() and 
-                    self.distance_to_closest_obstacle() < self.threshold * 2):
+                if self.distance_to_closest_obstacle() < self.threshold * 2:
                     self.current_state = StatePlanner.OBSTACLE_FOUND
                 if self.uav.movements.in_target(list(self.goal)):
                     self.current_state = StatePlanner.GOAL_REACHED
@@ -68,15 +71,17 @@ class PathPlanner:
 
     def distance_to_closest_obstacle(self):
         uav_position = self.uav.uav_info.get_uav_position(tolist=True)
-        kdtree = self.obstacles()
-        distance, _ = kdtree.query(uav_position, k=1)
-        return distance
-    
+        closest_distance = float('inf')
+        for sc in self.sphere_cloud.spheres:
+            sphere = [sc.center.x, sc.center.y, sc.center.z]
+            dist = Geometry.euclidean_distance(uav_position, sphere)
+            diff = dist - sc.radius
+            if diff < closest_distance:
+                closest_distance = diff
+        return closest_distance
 
     def callback_sphere_cloud(self, data: SphereCloud):
         self.sphere_cloud = data
-
-
 
     def callback_obstacles(self, data: PointCloud2) -> None:
         pc_data = pc2.read_points(data, field_names=('x', 'y', 'z'), skip_nans=True)
@@ -110,6 +115,7 @@ class PathPlanner:
         ).find_path(start=self.start, goal=self.goal)[2:]
 
         path.append(self.goal)
+        print(path)
         self.current_path = path
         rospy.loginfo('[PathPlanner]: Caminho encontrado...')
         rospy.loginfo(f'[PathPlanner]: O planejamento levou {round(perf_counter() - time_start, 5)}s para ser concluído...')
