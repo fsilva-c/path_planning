@@ -23,20 +23,18 @@ def start():
     # collector.start_collecting()
     # collector.stop_collecting()
     # pp.run()
-
+    from time import perf_counter
     from fs_path_planning.srv import Astar
     from geometry_msgs.msg import Point
     rospy.wait_for_service('/path_finder')
     try:
         astar_service = rospy.ServiceProxy('/path_finder', Astar)
-        # Crie uma solicitação personalizada aqui, se necessário
         req = Astar._request_class()
-        req.start = Point(2.1, 0, 1.22)
-        req.goal = Point(5, 5, 3)
-        # Preencha os campos da solicitação, se necessário
+        req.start = Point(0, 0, 1.22)
+        req.goal = Point(70, 7, 3)
+        start = perf_counter()
         resp = astar_service(req)
-        # A resposta do serviço está em resp, você pode acessar os campos, como resp.path
-        print(resp.path)
+        print(perf_counter() - start)
     except rospy.ServiceException as e:
         print("Erro ao chamar o serviço 'astar':", e)
 

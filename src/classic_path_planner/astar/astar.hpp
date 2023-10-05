@@ -21,7 +21,6 @@ public:
         const DiscreteGrid &dg);
 
     void init();
-    bool test();
     
     float heuristic(const Node &node, const Node &goal);
     bool is_valid(const Node &node);

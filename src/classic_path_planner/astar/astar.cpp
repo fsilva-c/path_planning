@@ -1,8 +1,10 @@
 #include <iostream>
+#include <unordered_map>
 #include <vector>
 #include <queue>
 #include <cmath>
 #include <algorithm>
+#include <array>
 #include "astar.hpp"
 
 AStar::AStar(
@@ -20,10 +22,10 @@ void AStar::init() {
 }
 
 bool AStar::is_valid(const Node &node) {
-    if (node.position.z < 0.5 or node.position.z > 6.0) {
+    auto continuous_point = dg.discrete_to_continuous(node.position);
+    if (continuous_point.z < 0.5 || continuous_point.z > 6.0) {
         return false;
     }
-
     return true;
 }
 
@@ -39,18 +41,15 @@ std::vector<Node> AStar::get_neighbours(const Node &node) {
         {-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, 
         {0, 1, 0}, {0, 0, -1}, {0, 0, 1}};
     std::vector<Node> neighbors;
+
     for (const std::array<int, 3>& delta : deltas) {
-        int dx = delta[0];
-        int dy = delta[1];
-        int dz = delta[2];
-
-        geometry_msgs::Point neighbor;
-        neighbor.x = node.position.x + dx;
-        neighbor.y = node.position.y + dy;
-        neighbor.z = node.position.z + dz;
-
+        geometry_msgs::Point p;
+        p.x = node.position.x + delta[0];
+        p.y = node.position.y + delta[1];
+        p.z = node.position.z + delta[2];
+        auto neighbor = Node(p);
         if (is_valid(neighbor)) {
-            neighbors.push_back(Node(neighbor));
+            neighbors.push_back(neighbor);
         }
     }
 
@@ -59,8 +58,8 @@ std::vector<Node> AStar::get_neighbours(const Node &node) {
 
 std::vector<geometry_msgs::Point> AStar::reconstruct_path(const Node &node) {
     std::vector<geometry_msgs::Point> path;
-    const Node* current = &node;
-    while (current != nullptr) {
+    auto current = &node;
+    while (current) {
         path.push_back(dg.discrete_to_continuous(current->position));
         current = current->parent;
     }
@@ -72,43 +71,48 @@ bool AStar::find_path(fs_path_planning::Astar::Request& req, fs_path_planning::A
     Node start_node = Node(dg.continuous_to_discrete(req.start));
     Node goal_node = Node(dg.continuous_to_discrete(req.goal));
 
-    std::priority_queue<Node> open_set;
-    open_set.push(start_node);
+    std::priority_queue<Node> frontier;
+    std::vector<geometry_msgs::Point> frontier_vec;
 
-    std::cout << "calculando caminho astar..." << '\n';
+    frontier.push(start_node);
+    frontier_vec.push_back(start_node.position);
 
-    while (!open_set.empty()) {
-        Node current = open_set.top();
+    while (!frontier.empty()) {
+        Node current_node = frontier.top();
+        frontier.pop();
 
-        if (current.position == goal_node.position) {
-            std::cout << "ACHOU O CAMINHO!..." << '\n';
-            res.path.points = reconstruct_path(current);
+        if (current_node.position == goal_node.position) {
+            res.path.points = reconstruct_path(current_node);
             return true;
         }
-        
-        open_set.pop();
 
-        std::vector<Node> neighbors = get_neighbours(current); // trocar para current->position
+        for (Node neighbour : get_neighbours(current_node)) {
+            if (!is_valid(neighbour)) {
+                continue;
+            }
 
-        for (Node& neighbor : neighbors) {
-            float tentative_g = current.g + heuristic(current, neighbor);
+            float new_cost = current_node.g + heuristic(current_node, neighbour);
+            bool in_frontier = (std::find(frontier_vec.begin(), frontier_vec.end(), neighbour.position) != frontier_vec.end());
 
-            if (tentative_g < neighbor.g) {
-                neighbor.parent = &current;
-                neighbor.g = tentative_g;
-                neighbor.h = heuristic(neighbor, goal_node);
-                neighbor.f = neighbor.g + neighbor.h;
+            if (!in_frontier || new_cost < neighbour.g) {
+                neighbour.g = new_cost;
+                neighbour.h = heuristic(neighbour, goal_node);
+                neighbour.f = new_cost + neighbour.h;
+                neighbour.parent = new Node(current_node);
 
-                open_set.push(neighbor);
+                if (!in_frontier) {
+                    frontier.push(neighbour);
+                    frontier_vec.push_back(neighbour.position);
+                }
             }
         }
     }
 
-    std::cout << "retornando..." << '\n';
+    std::cout << "Nenhum caminho encontrado..." << '\n';
 
-    return true; // temp...
-    // return false;
+    return false; // path not found...
 }
+
 
 int main(int argc, char** argv)
 {
