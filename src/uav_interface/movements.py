@@ -161,21 +161,21 @@ class Movements:
         rospy.wait_for_service(srv_name)
         service_proxy = rospy.ServiceProxy(srv_name, PathSrv)
 
-        points = []
-        for point in trajectory:
-            reference = Reference()
+        # points = []
+        # for point in trajectory:
+        #     reference = Reference()
 
-            if len(point) < 3:
-                point = list(point)
-                point.append(self.uav_info.get_garmin_range())
+        #     if len(point) < 3:
+        #         point = list(point)
+        #         point.append(self.uav_info.get_garmin_range())
 
-            reference.position = Point(point[0], point[1], point[2])
-            # reference.heading = 0.0
-            points.append(reference)
+        #     reference.position = Point(point[0], point[1], point[2])
+        #     # reference.heading = 0.0
+        #     points.append(reference)
         
         msg_srv = PathSrv._request_class()
         msg_srv.path.use_heading = False
-        msg_srv.path.points = points
+        msg_srv.path.points = [Reference(p, 0.0) for p in trajectory]
         msg_srv.path.fly_now = fly_now
 
         try:

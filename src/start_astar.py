@@ -31,9 +31,11 @@ def start():
         astar_service = rospy.ServiceProxy('/path_finder', Astar)
         req = Astar._request_class()
         req.start = Point(0, 0, 1.22)
-        req.goal = Point(70, 7, 3)
+        req.goal = Point(-2.5, 15, 1.8)
         start = perf_counter()
         resp = astar_service(req)
+        # path = [p for p in resp.path.points]
+        uav.movements.goto_trajectory(resp.path.points, fly_now=False)
         print(perf_counter() - start)
     except rospy.ServiceException as e:
         print("Erro ao chamar o serviço 'astar':", e)

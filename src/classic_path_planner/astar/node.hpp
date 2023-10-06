@@ -1,6 +1,3 @@
-#ifndef NODE_H_
-#define NODE_H_
-
 #include <geometry_msgs/Point.h>
 
 struct Node {
@@ -19,5 +16,3 @@ struct Node {
         return f > other.f;
     }
 };
-
-#endif

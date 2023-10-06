@@ -18,13 +18,24 @@ AStar::AStar(
 }
 
 void AStar::init() { 
-    this->find_path_service_ = nh_.advertiseService("path_finder", &AStar::find_path, this);
+    find_path_service_ = nh_.advertiseService("path_finder", &AStar::find_path, this);
+    sub_spheres_cloud = nh_.subscribe("/fspp_classical/spheres_cloud", 100, &AStar::callback_spheres_cloud, this);
 }
 
 bool AStar::is_valid(const Node &node) {
     auto continuous_point = dg.discrete_to_continuous(node.position);
     if (continuous_point.z < 0.5 || continuous_point.z > 6.0) {
         return false;
+    }
+
+    for (const auto &sphere : spheres_cloud.spheres) {
+        auto distance = std::sqrt(
+            std::pow(sphere.center.x - continuous_point.x, 2) +
+            std::pow(sphere.center.y - continuous_point.y, 2) +
+            std::pow(sphere.center.z - continuous_point.z, 2));
+        if (distance < sphere.radius + threshold * 2) {
+            return false;
+        }
     }
     return true;
 }
@@ -38,8 +49,9 @@ float AStar::heuristic(const Node &node, const Node &goal) {
 
 std::vector<Node> AStar::get_neighbours(const Node &node) {
     const std::array<int, 3> deltas[] = {
-        {-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, 
-        {0, 1, 0}, {0, 0, -1}, {0, 0, 1}};
+        {-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1},
+        {-1, -1, -1}, {-1, -1, 0}, {-1, -1, 1}, {-1, 0, -1}, {-1, 0, 1}, {-1, 1, -1}, {-1, 1, 0}, {-1, 1, 1},
+        {1, -1, -1}, {1, -1, 0}, {1, -1, 1}, {1, 0, -1}, {1, 0, 1}, {1, 1, -1}, {1, 1, 0}, {1, 1, 1}};
     std::vector<Node> neighbors;
 
     for (const std::array<int, 3>& delta : deltas) {
@@ -87,10 +99,6 @@ bool AStar::find_path(fs_path_planning::Astar::Request& req, fs_path_planning::A
         }
 
         for (Node neighbour : get_neighbours(current_node)) {
-            if (!is_valid(neighbour)) {
-                continue;
-            }
-
             float new_cost = current_node.g + heuristic(current_node, neighbour);
             bool in_frontier = (std::find(frontier_vec.begin(), frontier_vec.end(), neighbour.position) != frontier_vec.end());
 
@@ -108,8 +116,7 @@ bool AStar::find_path(fs_path_planning::Astar::Request& req, fs_path_planning::A
         }
     }
 
-    std::cout << "Nenhum caminho encontrado..." << '\n';
-
+    ROS_INFO("Nenhum caminho encontrado...");
     return false; // path not found...
 }
 
