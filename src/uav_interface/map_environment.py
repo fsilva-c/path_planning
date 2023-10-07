@@ -84,8 +84,6 @@ class MapEnvironment:
         return obstacles
     
     def get_sphere_cloud(self):
-        obstacles = []
-
         # Função de erro para minimização
         def err_circle(params, points):
             cx, cy, r = params
@@ -111,3 +109,4 @@ class MapEnvironment:
             if r_optimized > 5.0: # avoid noise...
                 continue
             yield cx_optimized, cy_optimized, r_optimized
+            

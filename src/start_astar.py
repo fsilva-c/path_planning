@@ -28,13 +28,12 @@ def start():
     from geometry_msgs.msg import Point
     rospy.wait_for_service('/path_finder')
     try:
-        astar_service = rospy.ServiceProxy('/path_finder', Astar)
+        astar_service = rospy.ServiceProxy('/path_finder', Astar, persistent=True)
         req = Astar._request_class()
-        req.start = Point(0, 0, 1.22)
-        req.goal = Point(-2.5, 15, 1.8)
         start = perf_counter()
+        req.start = Point(0, 0, 1.22)
+        req.goal = Point(-12.5, -10, 1.8)
         resp = astar_service(req)
-        # path = [p for p in resp.path.points]
         uav.movements.goto_trajectory(resp.path.points, fly_now=False)
         print(perf_counter() - start)
     except rospy.ServiceException as e:
