@@ -1,13 +1,11 @@
 import rospy
-import sensor_msgs.point_cloud2 as pc2
-from classic_path_planner.astar import AStar
 from time import perf_counter
 from uav_interface.uav import UAV
-from sensor_msgs.msg import PointCloud2
 from fs_path_planning.msg import SphereCloud
+from fs_path_planning.srv import Astar
 from geometry.geometry import Geometry
 from geometry.discrete_grid import DiscreteGrid
-from scipy.spatial import KDTree
+from geometry_msgs.msg import Point
 
 class StatePlanner:
     PLANNING = 1
@@ -19,48 +17,34 @@ class StatePlanner:
 class PathPlanner:
     def __init__(
             self,
-            goal,
             uav_id=1,
             resolution=0.5,
             threshold=0.5
         ) -> None:
-        self.goal = goal
         self.uav = UAV(uav_id)
         self.threshold = threshold
         self.dg = DiscreteGrid(resolution)
-        self.current_state = StatePlanner.PLANNING
-        self.current_path = []
-        self.start = []
 
-        # obstaculos...
-        self.sphere_cloud = None
-        self.point_cloud = []
-        self.kdtree = None
+        self.astar_service = rospy.ServiceProxy('/path_finder', Astar)
 
-        rospy.Subscriber('/fspp_classical/rplidar_3D', PointCloud2, self.callback_obstacles)
-        rospy.Subscriber('/fspp_classical/spheres_cloud', SphereCloud, self.callback_sphere_cloud)
-
-    def run(self) -> None:
-        uav_position = self.uav.uav_info.get_uav_position()
+    def run(self, goal) -> None:
+        self.current_state = StatePlanner.PLANNING # zera o estado...
+        uav_position = self.uav.uav_info.get_uav_position(tolist=True)
 
         rospy.loginfo('[PathPlanner]: Start Path Planning...')
         rospy.loginfo(
-            f'[PathPlanner]: Start {uav_position.x, uav_position.y, uav_position.z}; Goal: {self.goal}...'  # noqa: E501
+            f'[PathPlanner]: Start {uav_position}; Goal: {goal}...'
         )
-
-        self.path_plan()
-        return
 
         while self.current_state != StatePlanner.GOAL_REACHED:
             if self.current_state == StatePlanner.PLANNING:
-                self.path_plan()
+                self.path_plan(goal)
                 self.current_state = StatePlanner.MOVING
-                rospy.sleep(10.0)
             
             elif self.current_state == StatePlanner.MOVING:
-                if self.distance_to_closest_obstacle() < self.threshold * 2:
+                if self.distance_to_closest_obstacle() < self.threshold:
                     self.current_state = StatePlanner.OBSTACLE_FOUND
-                if self.uav.movements.in_target(list(self.goal)):
+                if self.uav.movements.in_target(goal):
                     self.current_state = StatePlanner.GOAL_REACHED
 
             elif self.current_state == StatePlanner.OBSTACLE_FOUND:
@@ -70,53 +54,19 @@ class PathPlanner:
         rospy.loginfo('[PathPlanner]: Finalizado Path Planning...')
 
     def distance_to_closest_obstacle(self):
-        uav_position = self.uav.uav_info.get_uav_position(tolist=True)
-        closest_distance = float('inf')
-        for sc in self.sphere_cloud.spheres:
-            sphere = [sc.center.x, sc.center.y, sc.center.z]
-            dist = Geometry.euclidean_distance(uav_position, sphere)
-            diff = dist - sc.radius
-            if diff < closest_distance:
-                closest_distance = diff
-        return closest_distance
+        return min(self.uav.uav_info.get_laser_scan().ranges)
 
-    def callback_sphere_cloud(self, data: SphereCloud):
-        self.sphere_cloud = data
-
-    def callback_obstacles(self, data: PointCloud2) -> None:
-        pc_data = pc2.read_points(data, field_names=('x', 'y', 'z'), skip_nans=True)
-        self.point_cloud = list(pc_data)
-    
-    def obstacles(self):
-        return KDTree(self.point_cloud)
-
-    def free_current_path(self) -> bool:
-        kdtree = self.obstacles()
-        result = kdtree.query_ball_point(self.current_path, self.threshold)
-        return not any(result)
-
-    def distance_to_start(self) -> float:
-        uav_position = self.uav.uav_info.get_uav_position()
-        return Geometry.euclidean_distance(self.start, [uav_position.x, uav_position.y, uav_position.z])
-
-    def path_plan(self) -> None:
+    def path_plan(self, goal) -> None:
         rospy.loginfo('[PathPlanner]: Path Planning...')
 
-        uav_position = self.uav.uav_info.get_uav_position()
-        self.start = (uav_position.x, uav_position.y, uav_position.z)
+        uav_position = self.uav.uav_info.get_uav_position(tolist=True)
 
-        time_start = perf_counter()
         rospy.loginfo('[PathPlanner]: Encontrando o caminho...')
-        # kdtree = self.obstacles()
-        path = AStar(
-            threshold=self.threshold,
-            dg=self.dg,
-            obstacles=self.sphere_cloud
-        ).find_path(start=self.start, goal=self.goal)[2:]
-
-        path.append(self.goal)
-        print(path)
-        self.current_path = path
+        time_start = perf_counter()
+        req = Astar._request_class()
+        req.start = Point(*uav_position)
+        req.goal = Point(*goal)
+        resp = self.astar_service(req)
         rospy.loginfo('[PathPlanner]: Caminho encontrado...')
         rospy.loginfo(f'[PathPlanner]: O planejamento levou {round(perf_counter() - time_start, 5)}s para ser concluído...')
-        self.uav.movements.goto_trajectory(path, fly_now=False)
+        self.uav.movements.goto_trajectory(resp.path.points, fly_now=True, wait=True)

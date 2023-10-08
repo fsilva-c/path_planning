@@ -19,7 +19,8 @@ AStar::AStar(
 
 void AStar::init() { 
     find_path_service_ = nh_.advertiseService("path_finder", &AStar::find_path, this);
-    sub_spheres_cloud = nh_.subscribe("/fspp_classical/spheres_cloud", 100, &AStar::callback_spheres_cloud, this);
+    sub_spheres_cloud = nh_.subscribe(
+        "/fspp_classical/spheres_cloud", 100, &AStar::callback_spheres_cloud, this);
 }
 
 bool AStar::is_valid(const Node &node) {
@@ -125,6 +126,8 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "astar_node");
     ros::NodeHandle nh;
+
+    ros::spinOnce();
     DiscreteGrid dg(0.5);
     AStar astar(nh, 0.5, dg);
     ROS_INFO("Serviço 'path_finder' pronto para ser chamado.");

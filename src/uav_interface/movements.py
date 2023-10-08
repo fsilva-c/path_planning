@@ -13,6 +13,11 @@ class Movements:
 
         self.uav_info = UAVInfo(uav_id)
 
+        # msgs_srv
+        self.srv_goto_trajectory_name = f'/uav{self.uav_id}/trajectory_generation/path'
+        rospy.wait_for_service(self.srv_goto_trajectory_name)
+        self.service_goto_trajectory = rospy.ServiceProxy(self.srv_goto_trajectory_name, PathSrv)
+
     def goto(self, target: list, heading: float=0.0) -> None:
         rospy.loginfo('GOTO uav...')
 
@@ -157,34 +162,19 @@ class Movements:
     def goto_trajectory(self, trajectory, fly_now=True, wait=False) -> None:
         rospy.loginfo('GOTO trajectory uav...')
 
-        srv_name = f'/uav{self.uav_id}/trajectory_generation/path'
-        rospy.wait_for_service(srv_name)
-        service_proxy = rospy.ServiceProxy(srv_name, PathSrv)
-
-        # points = []
-        # for point in trajectory:
-        #     reference = Reference()
-
-        #     if len(point) < 3:
-        #         point = list(point)
-        #         point.append(self.uav_info.get_garmin_range())
-
-        #     reference.position = Point(point[0], point[1], point[2])
-        #     # reference.heading = 0.0
-        #     points.append(reference)
-        
         msg_srv = PathSrv._request_class()
         msg_srv.path.use_heading = False
         msg_srv.path.points = [Reference(p, 0.0) for p in trajectory]
         msg_srv.path.fly_now = fly_now
 
         try:
-            service_proxy(msg_srv)
+            self.service_goto_trajectory(msg_srv)
         except rospy.ServiceException as e:
-            rospy.logerr(f'Erro ao chamar o serviço {srv_name}: {e}')
+            rospy.logerr(f'Erro ao chamar o serviço {self.srv_goto_trajectory_name}: {e}')
         
         if wait:
-            while not self.in_target(list(trajectory[-1])):
+            last_point = trajectory[-1]
+            while not self.in_target([last_point.x, last_point.y, last_point.z]):
                 rospy.sleep(0.1)
 
     def switch_controller(self, controller):
@@ -196,10 +186,10 @@ class Movements:
         srv_set_mode(req)
 
     def in_target(self, target) -> None:
-        uav_position = self.uav_info.get_uav_position()
+        uav_position = self.uav_info.get_uav_position(tolist=True)
         
         if len(target) < 3: # se goto3D -> ponto envolve o eixo z
             target.append(uav_position.z)
 
         # 30 cm
-        return Geometry.euclidean_distance(target, [uav_position.x, uav_position.y, uav_position.z]) <= 0.5
+        return Geometry.euclidean_distance(target, uav_position) <= 0.3

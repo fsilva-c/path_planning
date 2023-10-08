@@ -19,7 +19,7 @@ windows:
   - spawn:
       layout: tiled
       panes:
-        - waitForSimulation; rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-rplidar --pos_file `pwd`/pos.yaml --disable_motor_crash True"
+        - waitForSimulation; rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-rplidar --pos_file `pwd`/pos.yaml"
   - control:
       layout: tiled
       panes:
@@ -36,6 +36,10 @@ windows:
       layout: tiled
       panes:
         - waitForOdometry; roslaunch fs_path_planning projection3D.launch
+  - astar:
+      layout: tiled
+      panes:
+        - waitForOdometry; rosrun fs_path_planning astar
   - rviz:
       layout: tiled
       panes:

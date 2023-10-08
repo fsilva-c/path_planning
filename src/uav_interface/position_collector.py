@@ -3,28 +3,25 @@
 
 import rospy
 from time import perf_counter
-from gazebo_msgs.msg import ModelStates
+from mrs_msgs.msg import PositionCommand
+
+# local que ficam os arquivos:
+# /home/fs/.ros/
 
 class PositionCollector:
     def __init__(self) -> None:
         self.is_collect = False
         self.start_time = None
 
-        rospy.Subscriber('/gazebo/model_states', ModelStates, self.model_states_callback)
+        rospy.Subscriber(f'/uav1/control_manager/position_cmd', PositionCommand, self.callback_position)
 
-    def model_states_callback(self, data):
+    def callback_position(self, data):
         if self.is_collect:
-            model_name = 'uav1'
-            if model_name in data.name:
-                index = data.name.index(model_name)
-                position = data.pose[index].position
-                
-                x = position.x
-                y = position.y
-                z = position.z
-
-                with open(f'uav1-{self.start_time}.csv', 'a') as f:
-                    f.write(f'{rospy.get_time()}, {x}, {y}, {z}\n')
+            x = data.position.x
+            y = data.position.y
+            z = data.position.z
+            with open(f'uav1-{self.start_time}.csv', 'a') as f:
+                f.write(f'{rospy.get_time()}, {x}, {y}, {z}\n')
 
     def start_collecting(self):
         self.is_collect = True
