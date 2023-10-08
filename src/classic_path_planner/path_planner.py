@@ -1,9 +1,7 @@
 import rospy
 from time import perf_counter
 from uav_interface.uav import UAV
-from fs_path_planning.msg import SphereCloud
 from fs_path_planning.srv import Astar
-from geometry.geometry import Geometry
 from geometry.discrete_grid import DiscreteGrid
 from geometry_msgs.msg import Point
 
@@ -30,10 +28,8 @@ class PathPlanner:
     def run(self, goal) -> None:
         self.current_state = StatePlanner.PLANNING # zera o estado...
         uav_position = self.uav.uav_info.get_uav_position(tolist=True)
-
-        rospy.loginfo('[PathPlanner]: Start Path Planning...')
         rospy.loginfo(
-            f'[PathPlanner]: Start {uav_position}; Goal: {goal}...'
+            f'[PathPlanner]: Start Path Planning... {uav_position}; Goal: {goal}...'
         )
 
         while self.current_state != StatePlanner.GOAL_REACHED:
@@ -57,16 +53,12 @@ class PathPlanner:
         return min(self.uav.uav_info.get_laser_scan().ranges)
 
     def path_plan(self, goal) -> None:
-        rospy.loginfo('[PathPlanner]: Path Planning...')
-
+        rospy.loginfo('[PathPlanner]: Path Planning... Encontrando o caminho...')
         uav_position = self.uav.uav_info.get_uav_position(tolist=True)
-
-        rospy.loginfo('[PathPlanner]: Encontrando o caminho...')
         time_start = perf_counter()
         req = Astar._request_class()
         req.start = Point(*uav_position)
         req.goal = Point(*goal)
         resp = self.astar_service(req)
-        rospy.loginfo('[PathPlanner]: Caminho encontrado...')
-        rospy.loginfo(f'[PathPlanner]: O planejamento levou {round(perf_counter() - time_start, 5)}s para ser concluído...')
+        rospy.loginfo(f'[PathPlanner]: Caminho encontrado... O planejamento levou {round(perf_counter() - time_start, 5)}s para ser concluído...')
         self.uav.movements.goto_trajectory(resp.path.points, fly_now=True, wait=True)

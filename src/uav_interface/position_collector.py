@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
 import rospy
 from time import perf_counter
 from mrs_msgs.msg import PositionCommand
@@ -13,13 +14,19 @@ class PositionCollector:
         self.is_collect = False
         self.start_time = None
 
-        rospy.Subscriber(f'/uav1/control_manager/position_cmd', PositionCommand, self.callback_position)
+        rospy.Subscriber(
+            '/uav1/control_manager/position_cmd', PositionCommand, self.callback_position)
 
     def callback_position(self, data):
         if self.is_collect:
             x = data.position.x
             y = data.position.y
             z = data.position.z
+            file_name = f'uav1-{self.start_time}.csv'
+            if not os.path.isfile(file_name):
+                with open(f'uav1-{self.start_time}.csv', 'w') as f:
+                    f.write('timestamp,x,y,z' + '\n') # write header
+
             with open(f'uav1-{self.start_time}.csv', 'a') as f:
                 f.write(f'{rospy.get_time()}, {x}, {y}, {z}\n')
 
@@ -39,6 +46,5 @@ if __name__ == "__main__":
         while not rospy.is_shutdown():
             PositionCollector()
             rate.sleep()
-        # rospy.spin()
     except rospy.ROSInterruptException:
         pass

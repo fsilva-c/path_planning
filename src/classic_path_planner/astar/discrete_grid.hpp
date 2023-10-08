@@ -1,9 +1,10 @@
 #include <geometry_msgs/Point.h>
 
 class DiscreteGrid {
-public:
+private:
     float resolution;
 
+public:
     DiscreteGrid(const float &resolution) : resolution(resolution) { }
 
     geometry_msgs::Point discrete_to_continuous(const geometry_msgs::Point &point) {

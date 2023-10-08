@@ -10,6 +10,10 @@ uav = UAV(uav_id=1)
 pp = PathPlanner()
 collector = PositionCollector()
 
+experiments = [
+    [[0.0, 0.0, 2.0], [4.5, 8.0, 2.0]]
+]
+
 def start():
     rospy.init_node('astar_mission', anonymous=True)
 
@@ -20,10 +24,11 @@ def start():
     while rospy.get_time() <= 25.0 or uav.uav_info.get_active_tracker() == 'NullTracker':
         rospy.sleep(0.1)
 
+    '''
     collector.start_collecting()
-    pp.run(goal=[0, 0, 2.0])
     pp.run(goal=[4.5, 8.0, 2.0])
     pp.run(goal=[9.4, 1.9, 2.5])
     collector.stop_collecting()
+    '''
 
 start()

@@ -6,9 +6,11 @@ struct Node {
     float g;
     float h;
     float f;
+
     Node() : parent(nullptr), g(0.0f), h(0.0f), f(0.0f) { }
     Node(const geometry_msgs::Point& position) : 
         position(position), parent(nullptr), g(0.0f), h(0.0f), f(0.0f) { }
+        
     bool operator==(const Node& other) const {
         return position == other.position;
     }
