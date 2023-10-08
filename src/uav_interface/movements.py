@@ -15,7 +15,7 @@ class Movements:
 
         # msgs_srv
         self.srv_goto_trajectory_name = f'/uav{self.uav_id}/trajectory_generation/path'
-        rospy.wait_for_service(self.srv_goto_trajectory_name)
+        # rospy.wait_for_service(self.srv_goto_trajectory_name)
         self.service_goto_trajectory = rospy.ServiceProxy(self.srv_goto_trajectory_name, PathSrv)
 
     def goto(self, target: list, heading: float=0.0) -> None:
@@ -184,6 +184,13 @@ class Movements:
         req = String._request_class()
         req.value = controller
         srv_set_mode(req)
+
+    def hover(self):
+        srv_name = f'/uav{self.uav_id}/control_manager/hover'
+        rospy.wait_for_service(srv_name)
+        srv_hover = rospy.ServiceProxy(srv_name, Trigger)
+        req = Trigger._request_class()
+        srv_hover(req)
 
     def in_target(self, target) -> None:
         uav_position = self.uav_info.get_uav_position(tolist=True)

@@ -1,7 +1,7 @@
 name: simulation
 root: ./
 pre_window: export UAV_NAME=uav1; export RUN_TYPE=simulation; export UAV_TYPE=f450; export WORLD_NAME=simulation_local; export SENSORS="garmin_down"; export ODOMETRY_TYPE="gps"
-startup_window: status
+startup_window: mission
 windows:
   - roscore:
       layout: tiled
@@ -10,7 +10,7 @@ windows:
   - gazebo:
       layout: tiled
       panes:
-        - waitForRos; roslaunch mrs_simulation simulation.launch gui:=true world_file:=/home/fs/user_ros_workspace/src/path_planning/worlds/tree_scenario_1.world # world_name:=forest
+        - waitForRos; roslaunch mrs_simulation simulation.launch gui:=false world_file:=/home/fs/user_ros_workspace/src/path_planning/worlds/tree_scenario_2.world # world_name:=forest
         # - waitForOdometry; gz camera -c gzclient_camera -f ${UAV_NAME}; history -s gz camera -c gzclient_camera -f ${UAV_NAME}
   - status:
       layout: tiled
@@ -36,6 +36,10 @@ windows:
       layout: tiled
       panes:
         - waitForOdometry; roslaunch fs_path_planning projection3D.launch
+  - mission:
+    layout: tiled
+    panes:
+      - 'history -s roslaunch fs_path_planning start_astar.launch'
   - astar:
       layout: tiled
       panes:

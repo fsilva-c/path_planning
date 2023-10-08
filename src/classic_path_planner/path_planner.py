@@ -17,10 +17,10 @@ class PathPlanner:
             self,
             uav_id=1,
             resolution=0.5,
-            threshold=0.5
+            uav_radius=0.5
         ) -> None:
         self.uav = UAV(uav_id)
-        self.threshold = threshold
+        self.uav_radius = uav_radius
         self.dg = DiscreteGrid(resolution)
 
         self.astar_service = rospy.ServiceProxy('/path_finder', Astar)
@@ -32,20 +32,26 @@ class PathPlanner:
             f'[PathPlanner]: Start Path Planning... {uav_position}; Goal: {goal}...'
         )
 
-        while self.current_state != StatePlanner.GOAL_REACHED:
+        while self.current_state != StatePlanner.GOAL_REACHED or self.current_state == StatePlanner.COLLISION:
             if self.current_state == StatePlanner.PLANNING:
                 self.path_plan(goal)
                 self.current_state = StatePlanner.MOVING
             
             elif self.current_state == StatePlanner.MOVING:
-                if self.distance_to_closest_obstacle() < self.threshold:
+                if self.distance_to_closest_obstacle() < self.uav_radius * 3:
+                    rospy.loginfo('[PathPlanner]: Obstáculo próximo... Recalculando a rota...')
+                    self.uav.movements.hover()
+                    rospy.sleep(1)
                     self.current_state = StatePlanner.OBSTACLE_FOUND
                 if self.uav.movements.in_target(goal):
                     self.current_state = StatePlanner.GOAL_REACHED
-
+                    
             elif self.current_state == StatePlanner.OBSTACLE_FOUND:
                 self.current_state = StatePlanner.PLANNING
-            rospy.sleep(0.01)
+
+            if self.uav.uav_info.get_active_tracker() == 'NullTracker':
+                rospy.loginfo('[PathPlanner]: RTT!!! COLISÃO!!!')
+                self.current_state = StatePlanner.COLLISION
 
         rospy.loginfo('[PathPlanner]: Finalizado Path Planning...')
 
@@ -61,4 +67,4 @@ class PathPlanner:
         req.goal = Point(*goal)
         resp = self.astar_service(req)
         rospy.loginfo(f'[PathPlanner]: Caminho encontrado... O planejamento levou {round(perf_counter() - time_start, 5)}s para ser concluído...')
-        self.uav.movements.goto_trajectory(resp.path.points, fly_now=True, wait=True)
+        self.uav.movements.goto_trajectory(resp.path.points, fly_now=True)
