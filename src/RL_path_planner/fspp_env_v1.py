@@ -36,7 +36,7 @@ class FSPPEnv(gym.Env):
     N_HITS_RESET_GOAL = 200 # quantidade de acertos até resetar o goal
     N_SCENARIOS = 3
     POSSIBLE_GOALS = [
-        [0.0, 2.0, 2.0],
+        [0.0, 3.0, 2.0],
         [-1.5, 1.4, 2.5],
         [0.9, 2.9, 2.0],
         [1.8, -2.6, 3.0],
@@ -93,11 +93,11 @@ class FSPPEnv(gym.Env):
         return [seed]
 
     def step(self, action):
-        # self.unpause()
+        self.unpause()
         velocity = self.ACTIONS.get(action)
         uav_position = self.uav.uav_info.get_uav_position(tolist=True)
         self.uav.movements.apply_velocity(velocity)
-        # self.pause()
+        self.pause()
 
         observation = self._get_observation()
         reward = self._calculate_reward(uav_position)
@@ -154,21 +154,6 @@ class FSPPEnv(gym.Env):
         return reward
     
     def _get_observation(self):
-        '''
-        laser_scan = self.uav.uav_info.get_laser_scan()
-        ranges = np.array(laser_scan.ranges, dtype=np.float32)
-        ranges[np.isinf(ranges)] = laser_scan.range_max
-        uav_position = self.uav.uav_info.get_uav_position(tolist=True)
-        goal_distance = Geometry.euclidean_distance(uav_position, self.goal)
-
-        observation = {
-            'goal_distance': np.array([goal_distance], dtype=np.float32),
-            'position': np.array(uav_position, dtype=np.float32),
-            'goal': np.array(self.goal, dtype=np.float32),
-            'obstacles': ranges,
-        }
-        return observation
-        '''
         laser_scan = self.uav.uav_info.get_laser_scan()
         uav_position = self.uav.uav_info.get_uav_position(tolist=True)
         goal_distance = Geometry.euclidean_distance(uav_position, self.goal)
@@ -181,6 +166,7 @@ class FSPPEnv(gym.Env):
             'position': uav_position,
             'goal': self.goal,
             'obstacles': obstacles,
+
         }
         return observation
 
@@ -222,6 +208,7 @@ class FSPPEnv(gym.Env):
         scenario = random.randint(1, self.N_SCENARIOS)
         world_file = f'{worlds_dir}/worlds/tree_scenario_{scenario}.world'
 
+        '''
         subprocess.Popen(
             f'roslaunch mrs_simulation simulation.launch gui:=false world_file:={world_file}', 
             shell=True,
@@ -249,11 +236,11 @@ class FSPPEnv(gym.Env):
             stdout=subprocess.DEVNULL,
             stderr=subprocess.STDOUT)
         time.sleep(5.0)
-
         '''
+
         # gazebo simulation
         self._start_mrs_node(
-            f'roslaunch mrs_simulation simulation.launch gui:=true world_file:={world_file}',
+            f'roslaunch mrs_simulation simulation.launch gui:=false world_file:={world_file}',
             waiter=self.ros_waiter.wait_for_ros)
         
         # spawner...
@@ -269,8 +256,15 @@ class FSPPEnv(gym.Env):
         # uav_general core...
         self._start_mrs_node('roslaunch mrs_uav_general core.launch',
             waiter=self.ros_waiter.wait_for_odometry)
+        
+        # projection3D
+        # self._start_mrs_node('roslaunch fs_path_planning projection3D.launch',
+        #     waiter=self.ros_waiter.wait_for_odometry)
+        
+        time.sleep(5.0)
 
         # takeoff
+        '''
         self._start_mrs_node(
             """
             rosservice call /$UAV_NAME/mavros/cmd/arming 1;

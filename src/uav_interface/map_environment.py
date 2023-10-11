@@ -108,5 +108,6 @@ class MapEnvironment:
             cx_optimized, cy_optimized, r_optimized = result.x
             if r_optimized > 5.0: # avoid noise...
                 continue
-            yield cx_optimized, cy_optimized, r_optimized
+            z_uav = self.uav_info.get_uav_position().z
+            yield cx_optimized, cy_optimized, z_uav, r_optimized
             

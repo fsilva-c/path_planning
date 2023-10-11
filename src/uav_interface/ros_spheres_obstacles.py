@@ -13,14 +13,13 @@ class  FSPP_SphereCloud:
         self.pub = rospy.Publisher('/fspp_classical/spheres_cloud', SphereCloud, queue_size=10)
         rate = rospy.Rate(10)
         while not rospy.is_shutdown():
-            z_uav = uav.uav_info.get_uav_position().z
             sphere_cloud = SphereCloud()
             for sc in uav.map_environment.get_sphere_cloud():
                 s1 = Sphere()
                 s1.center.x = sc[0]
                 s1.center.y = sc[1]
-                s1.center.z = z_uav
-                s1.radius = sc[2]
+                s1.center.z = sc[2]
+                s1.radius = sc[3]
                 sphere_cloud.spheres.append(s1)
             self.pub.publish(sphere_cloud)
             rate.sleep()
