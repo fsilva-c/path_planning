@@ -173,11 +173,14 @@ class FSPPEnv(gym.Env):
         uav_position = self.uav.uav_info.get_uav_position(tolist=True)
         goal_distance = Geometry.euclidean_distance(uav_position, self.goal)
 
+        # trata obstaculos..
+        obstacles = np.array(laser_scan.ranges)[np.isinf(obstacles)] = laser_scan.range_max
+
         observation = {
             'goal_distance': goal_distance,
             'position': uav_position,
             'goal': self.goal,
-            'obstacles': laser_scan.ranges,
+            'obstacles': obstacles,
         }
         return observation
 
