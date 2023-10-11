@@ -49,10 +49,16 @@ float AStar::heuristic(const Node &node, const Node &goal) {
 }
 
 std::vector<Node> AStar::get_neighbours(const Node &node) {
+    /*
     const std::array<int, 3> deltas[] = {
         {-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1},
         {-1, -1, -1}, {-1, -1, 0}, {-1, -1, 1}, {-1, 0, -1}, {-1, 0, 1}, {-1, 1, -1}, {-1, 1, 0}, {-1, 1, 1},
         {1, -1, -1}, {1, -1, 0}, {1, -1, 1}, {1, 0, -1}, {1, 0, 1}, {1, 1, -1}, {1, 1, 0}, {1, 1, 1}};
+    */
+    const std::array<int, 3> deltas[] = {
+        {1, 0, 0}, {-1, 0, 0}, {0, 1, 0},
+        {0, -1, 0}, {0, 0, 1}, {0, 0, -1}
+    };
     std::vector<Node> neighbors;
 
     for (const std::array<int, 3>& delta : deltas) {

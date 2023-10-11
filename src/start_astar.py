@@ -10,10 +10,6 @@ uav = UAV(uav_id=1)
 pp = PathPlanner()
 collector = PositionCollector()
 
-experiments = [
-    [[0.0, 0.0, 2.0], [4.5, 8.0, 2.0]]
-]
-
 def start():
     rospy.init_node('astar_mission', anonymous=True)
 
@@ -26,7 +22,7 @@ def start():
 
     # collector.start_collecting()
     # pp.run(goal=[4.5, 8.0, 2.0])
-    pp.run(goal=[9.4, 3.9, 2.5])
+    # pp.run([-8.0, 8.0, 2.5])
     # collector.stop_collecting()
 
 start()

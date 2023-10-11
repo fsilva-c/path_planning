@@ -28,7 +28,7 @@ class PositionCollector:
                     f.write('timestamp,x,y,z' + '\n') # write header
 
             with open(f'uav1-{self.start_time}.csv', 'a') as f:
-                f.write(f'{rospy.get_time()}, {x}, {y}, {z}\n')
+                f.write(f'{rospy.get_time()},{x},{y},{z}\n')
 
     def start_collecting(self):
         self.is_collect = True

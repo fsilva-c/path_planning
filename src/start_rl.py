@@ -6,8 +6,8 @@ import time
 import rospy
 import subprocess
 from uav_interface.uav import UAV
-from RL_path_planner.fspp_env_v0 import FSPPEnv
-from stable_baselines3 import PPO
+from RL_path_planner.fspp_env_v1 import FSPPEnv
+from stable_baselines3 import DQN
 from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import EvalCallback
@@ -30,8 +30,9 @@ def start():
     env = DummyVecEnv([lambda: Monitor(FSPPEnv())])
 
     # logger...
-    new_logger = configure('ppo_fsppenv_log', ['stdout', 'csv'])
+    new_logger = configure('dqn_fsppenv_log', ['stdout', 'csv'])
 
+    '''
     model_params = {
         'n_steps': 1024,
         'batch_size': 32,
@@ -41,15 +42,16 @@ def start():
         'n_epochs': 10, 
         'gae_lambda': 0.9191725806525997
     }
+    '''
 
-    model = PPO(
+    model = DQN(
         'MultiInputPolicy',
         env,
         verbose=1,
         device='cuda',
-        stats_window_size=1, # estatísticas do PPO
-        **model_params
-    ) if 'best_model.zip' not in os.listdir('.') else PPO.load('best_model.zip', env=env)
+        stats_window_size=1, # estatísticas do DQN
+        # **model_params
+    ) if 'best_model.zip' not in os.listdir('.') else DQN.load('best_model.zip', env=env)
 
     model.set_logger(new_logger)
 
@@ -60,6 +62,6 @@ def start():
     )
 
     model.learn(total_timesteps=2e5, callback=eval_callback)
-    model.save('training_model_UAV_PPO')
+    model.save('training_model_UAV_DQN')
 
 start()

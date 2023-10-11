@@ -15,7 +15,9 @@ class Movements:
 
         # msgs_srv
         self.srv_goto_trajectory_name = f'/uav{self.uav_id}/trajectory_generation/path'
+        self.srv_apply_velocity_name = f'/uav{self.uav_id}/control_manager/velocity_reference'
         # rospy.wait_for_service(self.srv_goto_trajectory_name)
+        self.srv_velocity_reference = rospy.ServiceProxy(self.srv_apply_velocity_name, VelocityReferenceStampedSrv)
         self.service_goto_trajectory = rospy.ServiceProxy(self.srv_goto_trajectory_name, PathSrv)
 
     def goto(self, target: list, heading: float=0.0) -> None:
@@ -92,16 +94,14 @@ class Movements:
         self.motors(False) # desativa os motores...
 
     def apply_velocity(self, velocity):
-        srv_name = f'/uav{self.uav_id}/control_manager/velocity_reference'
-        srv_velocity_reference = rospy.ServiceProxy(srv_name, VelocityReferenceStampedSrv)
-        rospy.wait_for_service(srv_name)
+        # rospy.wait_for_service(srv_name)
         req = VelocityReferenceStampedSrv._request_class()
         req.reference.reference.velocity = velocity
         try:
-            srv_velocity_reference(req)
+            self.srv_velocity_reference(req)
             # rospy.sleep(0.25)
         except rospy.ServiceException as e:
-            rospy.logerr(f'Erro ao chamar o serviço {srv_name}: {e}')
+            rospy.logerr(f'Erro ao chamar o serviço {self.srv_apply_velocity_name}: {e}')
 
     def motors(self, status):
         srv_name = f'/uav{self.uav_id}/control_manager/motors'
