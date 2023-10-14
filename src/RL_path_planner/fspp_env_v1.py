@@ -36,7 +36,7 @@ class FSPPEnv(gym.Env):
     N_HITS_RESET_GOAL = 200 # quantidade de acertos até resetar o goal
     N_SCENARIOS = 3
     POSSIBLE_GOALS = [
-        [0.0, 2.0, 2.0],
+        [0.0, 3.0, 2.0],
         [-1.5, 1.4, 2.5],
         [0.9, 2.9, 2.0],
         [1.8, -2.6, 3.0],
@@ -280,12 +280,6 @@ class FSPPEnv(gym.Env):
             waiter=self.ros_waiter.wait_for_control)
         time.sleep(10)
         '''
-
-        # aguarda enquanto o uav não decola...
-        # rospy.loginfo('[FSPPEnv._start_nodes]: aguardando drone decolar...')
-        # while self.uav.uav_info.get_active_tracker() != 'MpcTracker':
-        #     rospy.sleep(0.1)
-        # rospy.loginfo('[FSPPEnv._start_nodes]: drone em voo...')
 
     def _kill_nodes(self):
         kill_path = os.path.join(filepath.parent, 'kill.sh')
