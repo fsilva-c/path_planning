@@ -3,7 +3,7 @@
 
 import os
 import rospy
-from time import perf_counter
+from datetime import datetime
 from mrs_msgs.msg import PositionCommand
 
 # local que ficam os arquivos:
@@ -32,7 +32,7 @@ class PositionCollector:
 
     def start_collecting(self):
         self.is_collect = True
-        self.start_time = perf_counter()
+        self.start_time = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         rospy.loginfo("[PositionCollector]: Iniciando a coleta de posições do drone")
 
     def stop_collecting(self):

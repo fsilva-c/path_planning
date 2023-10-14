@@ -49,16 +49,16 @@ float AStar::heuristic(const Node &node, const Node &goal) {
 }
 
 std::vector<Node> AStar::get_neighbours(const Node &node) {
-    /*
     const std::array<int, 3> deltas[] = {
         {-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1},
         {-1, -1, -1}, {-1, -1, 0}, {-1, -1, 1}, {-1, 0, -1}, {-1, 0, 1}, {-1, 1, -1}, {-1, 1, 0}, {-1, 1, 1},
         {1, -1, -1}, {1, -1, 0}, {1, -1, 1}, {1, 0, -1}, {1, 0, 1}, {1, 1, -1}, {1, 1, 0}, {1, 1, 1}};
-    */
+    /*
     const std::array<int, 3> deltas[] = {
         {1, 0, 0}, {-1, 0, 0}, {0, 1, 0},
         {0, -1, 0}, {0, 0, 1}, {0, 0, -1}
     };
+    */
     std::vector<Node> neighbors;
 
     for (const std::array<int, 3>& delta : deltas) {
@@ -87,6 +87,8 @@ std::vector<geometry_msgs::Point> AStar::reconstruct_path(const Node &node) {
 }
 
 bool AStar::find_path(fs_path_planning::Astar::Request& req, fs_path_planning::Astar::Response& res) {
+    ros::spinOnce();
+    auto time_start = ros::Time::now();
     Node start_node = Node(dg.continuous_to_discrete(req.start));
     Node goal_node = Node(dg.continuous_to_discrete(req.goal));
 
@@ -99,6 +101,12 @@ bool AStar::find_path(fs_path_planning::Astar::Request& req, fs_path_planning::A
     while (!frontier.empty()) {
         Node current_node = frontier.top();
         frontier.pop();
+
+        auto time_now = ros::Time::now();
+        if (time_now.toSec() - time_start.toSec() > 5) {
+            ROS_INFO("Timeout! Nenhum caminho encontrado...");
+            return false;
+        }
 
         if (current_node.position == goal_node.position) {
             res.path.points = reconstruct_path(current_node);
