@@ -1,5 +1,12 @@
 #include <ros/ros.h>
 #include <vector>
+#include <unordered_map>
+#include <unordered_set>
+#include <iostream>
+#include <queue>
+#include <cmath>
+#include <algorithm>
+#include <array>
 #include <geometry_msgs/Point.h>
 #include "fs_path_planning/Astar.h"
 #include "fs_path_planning/SphereCloud.h"
@@ -15,6 +22,12 @@ private:
     float threshold;
     DiscreteGrid dg;
     std::vector<int> obstacles;
+    
+    const std::vector<std::vector<int>> EXPANSION_DIRECTIONS = {
+        {-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1},
+        {-1, -1, -1}, {-1, -1, 0}, {-1, -1, 1}, {-1, 0, -1}, {-1, 0, 1}, {-1, 1, -1}, {-1, 1, 0}, {-1, 1, 1},
+        {1, -1, -1}, {1, -1, 0}, {1, -1, 1}, {1, 0, -1}, {1, 0, 1}, {1, 1, -1}, {1, 1, 0}, {1, 1, 1}
+    };
 
 public:
     AStar(
@@ -28,7 +41,7 @@ public:
         spheres_cloud = data; 
     }
     
-    float heuristic(const Node &node, const Node &goal);
+    float dist_euclidean(const geometry_msgs::Point &p1, const geometry_msgs::Point &p2);
     bool is_valid(const Node &node);
     std::vector<Node> get_neighbours(const Node &node);
     std::vector<geometry_msgs::Point> reconstruct_path(const Node &node);

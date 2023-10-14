@@ -20,9 +20,10 @@ def start():
     while rospy.get_time() <= 25.0 or uav.uav_info.get_active_tracker() == 'NullTracker':
         rospy.sleep(0.1)
 
-    # collector.start_collecting()
+    collector.start_collecting()
+    # pp.run([-10.0, 5.0, 3.0])
+    pp.run([5.0, 5.0, 4.0])
     # pp.run(goal=[4.5, 8.0, 2.0])
-    # pp.run([-8.0, 8.0, 2.5])
-    # collector.stop_collecting()
+    collector.stop_collecting()
 
 start()

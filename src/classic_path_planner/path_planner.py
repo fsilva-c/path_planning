@@ -2,6 +2,7 @@ import rospy
 from time import perf_counter
 from uav_interface.uav import UAV
 from fs_path_planning.srv import Astar
+from geometry.geometry import Geometry
 from geometry.discrete_grid import DiscreteGrid
 from geometry_msgs.msg import Point
 
@@ -23,6 +24,8 @@ class PathPlanner:
         self.uav_radius = uav_radius
         self.dg = DiscreteGrid(resolution)
 
+        self.n_replan = 0
+
         self.astar_service = rospy.ServiceProxy('/path_finder', Astar)
 
     def run(self, goal) -> None:
@@ -38,7 +41,7 @@ class PathPlanner:
                 self.current_state = StatePlanner.MOVING
             
             elif self.current_state == StatePlanner.MOVING:
-                if self.distance_to_closest_obstacle() < self.uav_radius * 3:
+                if self.distance_to_closest_obstacle() < self.uav_radius * 2:
                     rospy.loginfo('[PathPlanner]: Obstáculo próximo... Recalculando a rota...')
                     self.uav.movements.hover()
                     rospy.sleep(1)
@@ -48,12 +51,14 @@ class PathPlanner:
                     
             elif self.current_state == StatePlanner.OBSTACLE_FOUND:
                 self.current_state = StatePlanner.PLANNING
+                self.n_replan += 1
 
             if self.uav.uav_info.get_active_tracker() == 'NullTracker':
                 rospy.loginfo('[PathPlanner]: RTT!!! COLISÃO!!!')
                 self.current_state = StatePlanner.COLLISION
 
         rospy.loginfo('[PathPlanner]: Finalizado Path Planning...')
+        rospy.loginfo(f'[PathPlanner]: Replanejou o caminho {self.n_replan} vezes...')
 
     def distance_to_closest_obstacle(self):
         return min(self.uav.uav_info.get_laser_scan().ranges)
@@ -66,5 +71,6 @@ class PathPlanner:
         req.start = Point(*uav_position)
         req.goal = Point(*goal)
         resp = self.astar_service(req)
+        path = resp.path.points
         rospy.loginfo(f'[PathPlanner]: Caminho encontrado... O planejamento levou {round(perf_counter() - time_start, 5)}s para ser concluído...')
-        self.uav.movements.goto_trajectory(resp.path.points, fly_now=True)
+        self.uav.movements.goto_trajectory(path)

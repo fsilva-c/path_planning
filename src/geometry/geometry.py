@@ -15,13 +15,14 @@ class Geometry:
     @staticmethod
     def apply_cubic_spline(path, resolution=0.1):
         x, y, z = zip(*path)
-        cs_x = CubicSpline(np.arange(len(x)), x)
-        cs_y = CubicSpline(np.arange(len(y)), y)
-        cs_z = CubicSpline(np.arange(len(z)), z)
+        arange = np.arange(len(x))
+        cs_x = CubicSpline(arange, x)
+        cs_y = CubicSpline(arange, y)
+        cs_z = CubicSpline(arange, z)
         interpolated_path = []
         t = 0.0
         while t < len(path) - 1:
-            interpolated_point = (cs_x(t), cs_y(t), cs_z(t))
+            interpolated_point = (float(cs_x(t)), float(cs_y(t)), float(cs_z(t)))
             interpolated_path.append(interpolated_point)
             t += resolution
         return interpolated_path
