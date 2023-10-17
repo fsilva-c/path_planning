@@ -5,7 +5,7 @@ lateral_estimator: "GPS"
 
 # Altitude state estimator:
 # HEIGHT - rangefinder
-altitude_estimator: "BARO"
+altitude_estimator: "HEIGHT"
 
 # Heading state estimator:
 # GYRO - gyro, COMPASS - gyro, compass, OPTFLOW - gyro, optflow, HECTOR - gyro, hector slam
@@ -14,6 +14,9 @@ heading_estimator: "PIXHAWK"
 # Active estimators are started at node launch and can be switched to during flight
 state_estimators:
   active: ["GPS"]
+
+altitude:
+  max_default: 60.0
 
 heading_estimators:
   active: ["PIXHAWK"]

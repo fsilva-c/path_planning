@@ -1,6 +1,6 @@
 import rospy
-from geometry.geometry import Geometry
 from uav_interface.uav_info import UAVInfo
+from geometry.geometry import Geometry
 from mrs_msgs.srv import ReferenceStampedSrv, PathSrv, String, Vec1, VelocityReferenceStampedSrv
 from std_srvs.srv import Trigger, SetBool
 from mavros_msgs.srv import CommandBool, SetMode
@@ -191,6 +191,7 @@ class Movements:
         srv_hover = rospy.ServiceProxy(srv_name, Trigger)
         req = Trigger._request_class()
         srv_hover(req)
+        rospy.sleep(1)
 
     def in_target(self, target) -> None:
         uav_position = self.uav_info.get_uav_position(tolist=True)
@@ -198,5 +199,5 @@ class Movements:
         if len(target) < 3: # se goto3D -> ponto envolve o eixo z
             target.append(uav_position.z)
 
-        # 30 cm
-        return Geometry.euclidean_distance(target, uav_position) <= 0.3
+        # 15 cm
+        return Geometry.euclidean_distance(uav_position, target) <= 0.15

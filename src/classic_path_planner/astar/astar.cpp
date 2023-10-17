@@ -56,27 +56,37 @@ AStar::AStar(
 }
 
 void AStar::init() { 
-    find_path_service_ = nh_.advertiseService("path_finder", &AStar::find_path, this);
+    // find_path_service_ = nh_.advertiseService("path_finder", &AStar::find_path, this);
     sub_spheres_cloud = nh_.subscribe(
         "/fspp_classical/spheres_cloud", 100, &AStar::callback_spheres_cloud, this);
 }
 
 float AStar::dist_euclidean(const geometry_msgs::Point &p1, const geometry_msgs::Point &p2) {
-    return std::sqrt(
-        std::pow(p1.x - p2.x, 2) +
-        std::pow(p1.y - p2.y, 2) +
-        std::pow(p1.z - p2.z, 2));
+    float dx = p1.x - p2.x;
+    float dy = p1.y - p2.y;
+    float dz = p1.z - p2.z;
+    return sqrt(dx * dx + dy * dy + dz * dz);
 }
+
+float AStar::movement_cost(const Node& current, const Node& neighbor) {
+    float dx = std::abs(current.position.x - neighbor.position.x);
+    float dy = std::abs(current.position.y - neighbor.position.y);
+    float dz = std::abs(current.position.z - neighbor.position.z);
+    float cost = dx + dy + 3.0 * dz; // peso no eixo z...
+    return cost;
+}
+
 
 bool AStar::is_valid(const Node &node) {
     auto continuous_point = dg.discrete_to_continuous(node.position);
-    if (continuous_point.z < 0.5 || continuous_point.z > 6.0) {
+    if (continuous_point.z < 0.8 || continuous_point.z > 6.0) {
         return false;
     }
 
     for (const auto &sphere : spheres_cloud.spheres) {
         auto distance = dist_euclidean(sphere.center, continuous_point);
-        if (distance < sphere.radius + threshold * 2) {
+        if (distance < sphere.radius * 2) {
+            // std::cout << "node inválido p distancia... " << distance << ' ' << sphere.radius << '\n';
             return false;
         }
     }
@@ -85,21 +95,13 @@ bool AStar::is_valid(const Node &node) {
 }
 
 std::vector<Node> AStar::get_neighbours(const Node &node) {
-    /*
-    const std::array<int, 3> EXPANSION_DIRECTIONS[] = {
-        {-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1},
-        {-1, -1, -1}, {-1, -1, 0}, {-1, -1, 1}, {-1, 0, -1}, {-1, 0, 1}, {-1, 1, -1}, {-1, 1, 0}, {-1, 1, 1},
-        {1, -1, -1}, {1, -1, 0}, {1, -1, 1}, {1, 0, -1}, {1, 0, 1}, {1, 1, -1}, {1, 1, 0}, {1, 1, 1}};
-    */
     std::vector<Node> neighbors;
     for (const auto &delta : EXPANSION_DIRECTIONS) {
-        geometry_msgs::Point p;
-        p.x = node.position.x + delta[0];
-        p.y = node.position.y + delta[1];
-        p.z = node.position.z + delta[2];
-
         Node neighbor;
-        neighbor.position = p;
+        neighbor.position.x = node.position.x + delta[0];
+        neighbor.position.y = node.position.y + delta[1];
+        neighbor.position.z = node.position.z + delta[2];
+
         if (is_valid(neighbor)) {
             neighbors.push_back(neighbor);
         }
@@ -120,11 +122,18 @@ std::vector<geometry_msgs::Point> AStar::reconstruct_path(const Node &node) {
 }
 
 bool AStar::find_path(fs_path_planning::Astar::Request& req, fs_path_planning::Astar::Response& res) {
-    update_callbacks();
     auto time_start = ros::Time::now();
     
     auto start_discrete = dg.continuous_to_discrete(req.start);
     auto goal_discrete = dg.continuous_to_discrete(req.goal);
+
+    Node goal_node;
+    goal_node.position = goal_discrete;
+    if (!is_valid(goal_node))
+    {
+        ROS_ERROR("Ponto de destino inválido.");
+        return false;
+    }
 
     std::priority_queue<Node, std::vector<Node>, CostComparator> frontier;
     std::unordered_set<Node, HashFunction> open_set;
@@ -139,7 +148,7 @@ bool AStar::find_path(fs_path_planning::Astar::Request& req, fs_path_planning::A
     frontier.push(start);
     open_set.insert(start);
 
-    while (!frontier.empty() && ros::ok()) {
+    while (!frontier.empty()) {
         Node current = frontier.top();
         frontier.pop();
 
@@ -151,7 +160,6 @@ bool AStar::find_path(fs_path_planning::Astar::Request& req, fs_path_planning::A
 
         if (current.position == goal_discrete) { // path found...
             res.path.points = reconstruct_path(current);
-            std::cout << ros::Time::now() - time_start << '\n';
             return true;
         }
         
@@ -164,7 +172,7 @@ bool AStar::find_path(fs_path_planning::Astar::Request& req, fs_path_planning::A
                 continue;  // já foi explorado...
             }
 
-            float tentative_g = current.g + dist_euclidean(current.position, neighbor.position);
+            float tentative_g = current.g + movement_cost(current, neighbor);
 
             if (open_set.find(neighbor) == open_set.end() || tentative_g < neighbor.g) {
                 neighbor.g = tentative_g;
@@ -187,10 +195,38 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "astar_node");
     ros::NodeHandle nh;
-
-    DiscreteGrid dg(0.5);
+    DiscreteGrid dg(0.25);
     AStar astar(nh, 0.5, dg);
+    ros::ServiceServer service = nh.advertiseService("path_finder", &AStar::find_path, &astar);
     ROS_INFO("Serviço 'path_finder' pronto para ser chamado.");
+
+
+    /* test... */
+    /*
+    std::vector<geometry_msgs::Point> valid_points;
+    geometry_msgs::Point center;
+    center.x = 0.0;
+    center.y = 0.0;
+    center.z = 1.22;
+    const float radius = 14.0;
+    for (double x = center.x - radius; x <= center.x + radius; x += 1.0) {
+        for (double y = center.y - radius; y <= center.y + radius; y += 1.0) {
+            for (double z = center.z - radius; z <= center.z + radius; z += 1.0) {
+                geometry_msgs::Point point;
+                point.x = x;
+                point.y = y;
+                point.z = z;
+
+                // Verifique se o ponto é válido usando a função is_valid
+                if (astar.is_valid(point)) {
+                    std::cout << point << '\n';
+                    // valid_points.push_back(point);
+                }
+            }
+        }
+    }
+    */
+
     ros::spin();
     return 0;
 }

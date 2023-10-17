@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-df = pd.read_csv('experiments/classical/Teste 1.csv')
+df = pd.read_csv('experiments/classical/ex5_cen_1.csv')
 
 # distancia total...
 df['delta_x'] = df['x'].diff()
@@ -27,18 +27,11 @@ print(f'Distância total percorrida: {distancia_total} m')
 print(f'Velocidade média: {mean_velocity} m/s')
 print(f'Tempo de vôo: {fly_time} s')
 print(f'Altitude média: {mean_height} m')
-print(f'Vriação de altitude: {var_height} m')
+print(f'Variação de altitude: {var_height} m')
 
-
+'''
 # Análise de Velocidade Instantânea:
 import matplotlib.pyplot as plt
-velocidade_instantanea = ((df['x'].diff())**2 + (df['y'].diff())**2 + (df['z'].diff())**2)**0.5 / df['timestamp'].diff()
-# Plote um gráfico da velocidade instantânea em relação ao tempo
-plt.plot(df['timestamp'], velocidade_instantanea)
-plt.xlabel('Timestamp')
-plt.ylabel('Velocidade (m/s)')
-plt.title('Velocidade Instantânea ao Longo do Tempo')
-plt.show()
 
 # Visualização 3D do Caminho:
 from mpl_toolkits.mplot3d import Axes3D
@@ -49,5 +42,6 @@ ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
 plt.show()
+'''
 
 

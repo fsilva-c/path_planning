@@ -39,23 +39,32 @@ class PathPlanner:
             if self.current_state == StatePlanner.PLANNING:
                 self.path_plan(goal)
                 self.current_state = StatePlanner.MOVING
+                # rospy.sleep(10)
             
             elif self.current_state == StatePlanner.MOVING:
-                if self.distance_to_closest_obstacle() < self.uav_radius * 2:
+                if self.distance_to_closest_obstacle() < self.uav_radius * 2.0:
                     rospy.loginfo('[PathPlanner]: Obstáculo próximo... Recalculando a rota...')
-                    self.uav.movements.hover()
-                    rospy.sleep(1)
-                    self.current_state = StatePlanner.OBSTACLE_FOUND
+                    self.uav.movements.hover() # para o drone para recalcular a rota...
+                    # self.current_state = StatePlanner.OBSTACLE_FOUND
+                    self.path_plan(goal) # replaneja a rota...
+                    while self.distance_to_closest_obstacle() < self.uav_radius * 3.0:
+                        rospy.sleep(0.01) # aguarda desviar do obstáculo...
+                    self.n_replan += 1
+                    self.current_state = StatePlanner.MOVING
+
                 if self.uav.movements.in_target(goal):
                     self.current_state = StatePlanner.GOAL_REACHED
-                    
+            '''
             elif self.current_state == StatePlanner.OBSTACLE_FOUND:
                 self.current_state = StatePlanner.PLANNING
                 self.n_replan += 1
+            '''
 
             if self.uav.uav_info.get_active_tracker() == 'NullTracker':
                 rospy.loginfo('[PathPlanner]: RTT!!! COLISÃO!!!')
                 self.current_state = StatePlanner.COLLISION
+            
+            rospy.sleep(0.01)
 
         rospy.loginfo('[PathPlanner]: Finalizado Path Planning...')
         rospy.loginfo(f'[PathPlanner]: Replanejou o caminho {self.n_replan} vezes...')

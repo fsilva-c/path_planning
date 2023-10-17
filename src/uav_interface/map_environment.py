@@ -18,14 +18,15 @@ class MapEnvironment:
     
     def get_tree_clusters(self): # pegar as árvores de forma agrupada...
         points = list(self.get_obstacles_rplidar())
-        dbscan = DBSCAN(eps=0.6)
-        dbscan.fit(points)
-        labels = dbscan.labels_
         clusters = {}
-        for i, label in enumerate(labels):
-            if label not in clusters:
-                clusters[label] = []
-            clusters[label].append(points[i])
+        if points:
+            dbscan = DBSCAN(eps=0.25)
+            dbscan.fit(points)
+            labels = dbscan.labels_
+            for i, label in enumerate(labels):
+                if label not in clusters:
+                    clusters[label] = []
+                clusters[label].append(points[i])
         return clusters
     
     def get_obstacles_3D(self):
@@ -55,7 +56,7 @@ class MapEnvironment:
             cx_optimized, cy_optimized, r_optimized = result.x
             center_x, center_y = cx_optimized, cy_optimized
             radius = r_optimized
-            if radius > 5.0: # avoid noise...
+            if radius > 2.0: # avoid noise...
                 continue
             n = 10
             angles = np.linspace(0, 2 * np.pi, n)
@@ -106,7 +107,7 @@ class MapEnvironment:
 
             # Extrair os parâmetros do círculo otimizado
             cx_optimized, cy_optimized, r_optimized = result.x
-            if r_optimized > 5.0: # avoid noise...
+            if r_optimized > 2.0: # avoid noise...
                 continue
             yield cx_optimized, cy_optimized, r_optimized
             

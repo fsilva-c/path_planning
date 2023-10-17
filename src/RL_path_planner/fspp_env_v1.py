@@ -4,6 +4,7 @@ import time
 import subprocess
 import rospy
 import pathlib
+import math
 import numpy as np
 from uav_interface.uav import UAV
 from RL_path_planner.ros_waiter import ROSWaiter
@@ -22,7 +23,7 @@ mrs_env['UAV_TYPE'] = 'f450'
 mrs_env['WORLD_NAME'] = 'simulation_local'
 mrs_env['SENSORS'] = 'garmin_down'
 mrs_env['ODOMETRY_TYPE'] = 'gps'
-mrs_env['PX4_SIM_SPEED_FACTOR'] = '4'
+mrs_env['PX4_SIM_SPEED_FACTOR'] = '5'
 
 filepath = pathlib.Path(__file__).resolve().parent
 worlds_dir = filepath.parent.parent
@@ -139,36 +140,22 @@ class FSPPEnv(gym.Env):
         elif self.uav.movements.in_target(self.goal): # chegou no alvo
             reward = 100.0
         else:
-            prev_distance_to_goal = Geometry.euclidean_distance(
-                prev_uav_position, self.goal)
+            prev_distance_to_goal = Geometry.euclidean_distance(prev_uav_position, self.goal)
             if distance_to_goal > prev_distance_to_goal: # se distanciou do goal
-                reward = -10.0
+                reward = -5.0
             else:
-                reward = (prev_distance_to_goal - distance_to_goal) * 10.0 # mais pontos cada vez que se aproxima do goal...
-            
+                reward = (prev_distance_to_goal - distance_to_goal) * 100.0 # mais pontos cada vez que se aproxima do goal...
             if self.uav.uav_info.get_uav_position().z > self.TREE_HEIGHT: # se estiver voando sob as árvores
                 reward -= 5
 
-        reward -= 1
+        reward -= 1 # desconta a cada step...
 
-        return reward
+        return self._map_reward_with_sigmoid(reward)
+
+    def _map_reward_with_sigmoid(self, reward, scale=1.0):
+        return 1 / (1 + math.exp(-scale * reward))
     
     def _get_observation(self):
-        '''
-        laser_scan = self.uav.uav_info.get_laser_scan()
-        ranges = np.array(laser_scan.ranges, dtype=np.float32)
-        ranges[np.isinf(ranges)] = laser_scan.range_max
-        uav_position = self.uav.uav_info.get_uav_position(tolist=True)
-        goal_distance = Geometry.euclidean_distance(uav_position, self.goal)
-
-        observation = {
-            'goal_distance': np.array([goal_distance], dtype=np.float32),
-            'position': np.array(uav_position, dtype=np.float32),
-            'goal': np.array(self.goal, dtype=np.float32),
-            'obstacles': ranges,
-        }
-        return observation
-        '''
         laser_scan = self.uav.uav_info.get_laser_scan()
         uav_position = self.uav.uav_info.get_uav_position(tolist=True)
         goal_distance = Geometry.euclidean_distance(uav_position, self.goal)
@@ -222,6 +209,7 @@ class FSPPEnv(gym.Env):
         scenario = random.randint(1, self.N_SCENARIOS)
         world_file = f'{worlds_dir}/worlds/tree_scenario_{scenario}.world'
 
+        '''
         subprocess.Popen(
             f'roslaunch mrs_simulation simulation.launch gui:=false world_file:={world_file}', 
             shell=True,
@@ -246,14 +234,14 @@ class FSPPEnv(gym.Env):
             'roslaunch mrs_uav_general core.launch', 
             shell=True,
             env=mrs_env,
-            stdout=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,  
             stderr=subprocess.STDOUT)
         time.sleep(5.0)
-
         '''
+
         # gazebo simulation
         self._start_mrs_node(
-            f'roslaunch mrs_simulation simulation.launch gui:=true world_file:={world_file}',
+            f'roslaunch mrs_simulation simulation.launch gui:=false world_file:={world_file}',
             waiter=self.ros_waiter.wait_for_ros)
         
         # spawner...
@@ -278,8 +266,8 @@ class FSPPEnv(gym.Env):
             rosservice call /$UAV_NAME/mavros/set_mode 0 offboard
             """,
             waiter=self.ros_waiter.wait_for_control)
+        
         time.sleep(10)
-        '''
 
     def _kill_nodes(self):
         kill_path = os.path.join(filepath.parent, 'kill.sh')

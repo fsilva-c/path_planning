@@ -3,9 +3,9 @@
 
 import rospy
 import sensor_msgs.point_cloud2 as pc2
-from uav import UAV
+from uav_interface.uav import UAV
 from std_msgs.msg import Header
-from sensor_msgs.msg import LaserScan, PointCloud2
+from sensor_msgs.msg import PointCloud2
 
 uav = UAV(uav_id=1)
 

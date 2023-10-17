@@ -21,9 +21,8 @@ def start():
         rospy.sleep(0.1)
 
     collector.start_collecting()
-    # pp.run([-10.0, 5.0, 3.0])
-    pp.run([5.0, 5.0, 4.0])
-    # pp.run(goal=[4.5, 8.0, 2.0])
+    pp.run([-16.0, 15.0, 2.0])
+    pp.run([18.5, 10.0, 2.0])
     collector.stop_collecting()
 
 start()

@@ -16,7 +16,7 @@
 class AStar {
 private:
     ros::NodeHandle nh_;
-    ros::ServiceServer find_path_service_;
+    // ros::ServiceServer find_path_service_;
     ros::Subscriber sub_spheres_cloud;
     fs_path_planning::SphereCloud spheres_cloud;
     float threshold;
@@ -42,6 +42,7 @@ public:
     }
     
     float dist_euclidean(const geometry_msgs::Point &p1, const geometry_msgs::Point &p2);
+    float movement_cost(const Node& current, const Node& neighbor);
     bool is_valid(const Node &node);
     std::vector<Node> get_neighbours(const Node &node);
     std::vector<geometry_msgs::Point> reconstruct_path(const Node &node);
