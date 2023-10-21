@@ -23,7 +23,7 @@ mrs_env['UAV_TYPE'] = 'f450'
 mrs_env['WORLD_NAME'] = 'simulation_local'
 mrs_env['SENSORS'] = 'garmin_down'
 mrs_env['ODOMETRY_TYPE'] = 'gps'
-mrs_env['PX4_SIM_SPEED_FACTOR'] = '5'
+mrs_env['PX4_SIM_SPEED_FACTOR'] = '4'
 
 filepath = pathlib.Path(__file__).resolve().parent
 worlds_dir = filepath.parent.parent
@@ -136,24 +136,21 @@ class FSPPEnv(gym.Env):
         distance_to_goal = self._distance_to_goal()
         
         if self.uav.uav_info.get_active_tracker() == 'NullTracker': # bateu e caiu
-            reward = -20.0
+            return -0.20
         elif self.uav.movements.in_target(self.goal): # chegou no alvo
-            reward = 100.0
+            return 1.0
         else:
             prev_distance_to_goal = Geometry.euclidean_distance(prev_uav_position, self.goal)
             if distance_to_goal > prev_distance_to_goal: # se distanciou do goal
-                reward = -5.0
+                reward = -0.05
             else:
-                reward = (prev_distance_to_goal - distance_to_goal) * 100.0 # mais pontos cada vez que se aproxima do goal...
+                reward = (prev_distance_to_goal - distance_to_goal) * 10.0 # mais pontos cada vez que se aproxima do goal...
             if self.uav.uav_info.get_uav_position().z > self.TREE_HEIGHT: # se estiver voando sob as árvores
-                reward -= 5
+                reward -= 0.05
 
-        reward -= 1 # desconta a cada step...
+        reward -= 0.01 # desconta a cada step...
 
-        return self._map_reward_with_sigmoid(reward)
-
-    def _map_reward_with_sigmoid(self, reward, scale=1.0):
-        return 1 / (1 + math.exp(-scale * reward))
+        return reward
     
     def _get_observation(self):
         laser_scan = self.uav.uav_info.get_laser_scan()

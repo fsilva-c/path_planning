@@ -79,13 +79,13 @@ float AStar::movement_cost(const Node& current, const Node& neighbor) {
 
 bool AStar::is_valid(const Node &node) {
     auto continuous_point = dg.discrete_to_continuous(node.position);
-    if (continuous_point.z < 0.8 || continuous_point.z > 6.0) {
+    if (continuous_point.z < 0.5) {
         return false;
     }
 
     for (const auto &sphere : spheres_cloud.spheres) {
         auto distance = dist_euclidean(sphere.center, continuous_point);
-        if (distance < sphere.radius * 2) {
+        if (distance < sphere.radius * 3.0) {
             // std::cout << "node inválido p distancia... " << distance << ' ' << sphere.radius << '\n';
             return false;
         }
@@ -129,8 +129,7 @@ bool AStar::find_path(fs_path_planning::Astar::Request& req, fs_path_planning::A
 
     Node goal_node;
     goal_node.position = goal_discrete;
-    if (!is_valid(goal_node))
-    {
+    if (!is_valid(goal_node)) {
         ROS_ERROR("Ponto de destino inválido.");
         return false;
     }
@@ -138,7 +137,6 @@ bool AStar::find_path(fs_path_planning::Astar::Request& req, fs_path_planning::A
     std::priority_queue<Node, std::vector<Node>, CostComparator> frontier;
     std::unordered_set<Node, HashFunction> open_set;
     std::unordered_set<Node, HashFunction>  closed_set;
-    std::unordered_map<Node, Node, HashFunction> parent_map;
 
     Node start;
     start.position = start_discrete;
@@ -167,6 +165,10 @@ bool AStar::find_path(fs_path_planning::Astar::Request& req, fs_path_planning::A
         closed_set.insert(current);
 
         auto neighbours = get_neighbours(current);
+        if (!neighbours.size()) {
+            ROS_INFO("PONTO SEM VIZINHOS VÁLIDOS!!");
+            return false;
+        }
         for (auto &neighbor : neighbours) {
             if (closed_set.find(neighbor) != closed_set.end()) {
                 continue;  // já foi explorado...
@@ -195,7 +197,7 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "astar_node");
     ros::NodeHandle nh;
-    DiscreteGrid dg(0.25);
+    DiscreteGrid dg(0.5);
     AStar astar(nh, 0.5, dg);
     ros::ServiceServer service = nh.advertiseService("path_finder", &AStar::find_path, &astar);
     ROS_INFO("Serviço 'path_finder' pronto para ser chamado.");

@@ -2,7 +2,6 @@ import rospy
 from time import perf_counter
 from uav_interface.uav import UAV
 from fs_path_planning.srv import Astar
-from geometry.geometry import Geometry
 from geometry.discrete_grid import DiscreteGrid
 from geometry_msgs.msg import Point
 
@@ -42,12 +41,12 @@ class PathPlanner:
                 # rospy.sleep(10)
             
             elif self.current_state == StatePlanner.MOVING:
-                if self.distance_to_closest_obstacle() < self.uav_radius * 2.0:
+                if self.distance_to_closest_obstacle() < self.uav_radius * 5.0:
                     rospy.loginfo('[PathPlanner]: Obstáculo próximo... Recalculando a rota...')
                     self.uav.movements.hover() # para o drone para recalcular a rota...
-                    # self.current_state = StatePlanner.OBSTACLE_FOUND
+                    rospy.sleep(3) # estabilizar o sensor...
                     self.path_plan(goal) # replaneja a rota...
-                    while self.distance_to_closest_obstacle() < self.uav_radius * 3.0:
+                    while self.distance_to_closest_obstacle() < self.uav_radius * 5.0:
                         rospy.sleep(0.01) # aguarda desviar do obstáculo...
                     self.n_replan += 1
                     self.current_state = StatePlanner.MOVING

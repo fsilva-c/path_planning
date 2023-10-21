@@ -3,7 +3,6 @@
 
 import rospy
 from uav_interface.uav import UAV
-from std_msgs.msg import Header
 from fs_path_planning.msg import SphereCloud
 from fs_path_planning.msg import Sphere
 
@@ -16,9 +15,6 @@ class  FSPP_SphereCloud:
         while not rospy.is_shutdown():
             uav_position = uav.uav_info.get_uav_position()
             sphere_cloud = SphereCloud()
-            header = Header()
-            header.frame_id = 'uav1/fcu'
-            header.stamp = rospy.Time.now()
             for sc in uav.map_environment.get_sphere_cloud():
                 s1 = Sphere()
                 s1.center.x = sc[0] + uav_position.x

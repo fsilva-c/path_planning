@@ -1,4 +1,4 @@
 <launch>
-  <node name="fspp_classical_rplidar" pkg="fs_path_planning"  type="ros_rplidar.py"/>
-  <node name="fspp_classical_spheres_obstacles" pkg="fs_path_planning"  type="ros_spheres_obstacles.py"/>
+  <node name="fspp_classical_rplidar" pkg="fs_path_planning" type="ros_rplidar.py"/>
+  <node name="fspp_classical_spheres_obstacles" pkg="fs_path_planning" type="ros_spheres_obstacles.py" output="screen"/>
 </launch>
