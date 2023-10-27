@@ -22,7 +22,7 @@ mrs_env['UAV_TYPE'] = 'f450'
 mrs_env['WORLD_NAME'] = 'simulation_local'
 mrs_env['SENSORS'] = 'garmin_down'
 mrs_env['ODOMETRY_TYPE'] = 'gps'
-mrs_env['PX4_SIM_SPEED_FACTOR'] = '4'
+mrs_env['PX4_SIM_SPEED_FACTOR'] = '1'
 
 filepath = pathlib.Path(__file__).resolve().parent
 worlds_dir = filepath.parent.parent
@@ -68,22 +68,27 @@ class FSPPEnv(gym.Env):
         self.uav = UAV(uav_id=uav_id)
         self.seed()
 
-        self.action_space = spaces.Discrete(6)
+        '''
+        ## observation space...
+            leituras do sensor LaserScan (ranges)
+            posição do drone (coordenadas x, y e z)
+            distância até o objetivo
+            vetor do objetivo
+        '''
+        num_laser_readings = 720
+        low = np.array([0.0] * num_laser_readings + [-60.0, -60.0, -60.0] + [0.0] + [-60.0, -60.0, -60.0])
+        high = np.array([15.0] * num_laser_readings + [60.0, 60.0, 60.0] + [120.0] + [60.0, 60.0, 60.0])
+        self.observation_space = spaces.Box(np.float32(low), np.float32(high), dtype=np.float32)
 
-        self.observation_space = spaces.Dict({
-            'goal_distance': spaces.Box(low=0.0, high=np.inf, shape=(1,), dtype=np.float32),
-            'position': spaces.Box(low=-100.0, high=100.0, shape=(3,), dtype=np.float32),
-            'goal': spaces.Box(low=-100.0, high=100.0, shape=(3,), dtype=np.float32),
-            'obstacles': spaces.Box(low=0.0, high=15.0, shape=(720,), dtype=np.float32),
-        })
+        self.action_space = spaces.Discrete(6)
 
         self.goal = goal
         self.initial_distance_to_goal = None
         self.n_hits_on_taget = 0
 
         # gazebo comms...
-        self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
-        self.pause = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
+        # self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
+        # self.pause = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
 
         # mrs ros nodes...
         self.ros_waiter = ROSWaiter('uav1')
@@ -95,12 +100,11 @@ class FSPPEnv(gym.Env):
     def step(self, action):
         # self.unpause()
         velocity = self.ACTIONS.get(action)
-        uav_position = self.uav.uav_info.get_uav_position(tolist=True)
+        old_position = self.uav.uav_info.get_uav_position(tolist=True)
         self.uav.movements.apply_velocity(velocity)
-        # self.pause()
 
         observation = self._get_observation()
-        reward = self._calculate_reward(uav_position)
+        reward = self._calculate_reward(old_position)
         done = self._check_episode_completion()
         info = {}
 
@@ -112,7 +116,7 @@ class FSPPEnv(gym.Env):
     def reset(self):
         # rospy.loginfo('[FSPPEnv.reset]: antes _reset_mrs_nodes')
         self._reset_mrs_nodes()
-        self.uav.movements.takeoff()
+        # self.uav.movements.takeoff()
         # rospy.loginfo('[FSPPEnv.reset]: depois _reset_mrs_nodes')
 
         # gera um novo goal a cada self.N_HITS_RESET_GOAL (acerto) no target...
@@ -125,47 +129,52 @@ class FSPPEnv(gym.Env):
         rospy.loginfo('[FSPPEnv.reset]: env resetado')
 
         return self._get_observation()
+    
+    def _goal_vector(self):
+        uav_position = self.uav.uav_info.get_uav_position(tolist=True)
+        vec =  [
+            self.goal[0] - uav_position[0],
+            self.goal[1] - uav_position[1],
+            self.goal[2] - uav_position[2],
+        ]
+        return vec
 
     def _distance_to_goal(self):
         uav_position = self.uav.uav_info.get_uav_position(tolist=True)
         return Geometry.euclidean_distance(uav_position, self.goal)
 
-    def _calculate_reward(self, prev_uav_position):
+    def _calculate_reward(self, old_position):
         reward = 0
         distance_to_goal = self._distance_to_goal()
+        old_distance = Geometry.euclidean_distance(old_position, self.goal)
+        distance_rate = old_distance - distance_to_goal
+
+        if distance_rate > 0.0:
+            reward = distance_rate * 20.0
+        if distance_rate <= 0.0:
+            reward = -0.01
         
         if self.uav.uav_info.get_active_tracker() == 'NullTracker': # bateu e caiu
-            return -1
-        elif self.uav.movements.in_target(self.goal): # chegou no alvo
-            return 10.0
-        else:
-            prev_distance_to_goal = Geometry.euclidean_distance(prev_uav_position, self.goal)
-            if distance_to_goal > prev_distance_to_goal: # se distanciou do goal
-                reward = -0.05
-            else:
-                reward = (prev_distance_to_goal - distance_to_goal) * 10.0 # mais pontos cada vez que se aproxima do goal...
-            if self.uav.uav_info.get_uav_position().z > self.TREE_HEIGHT: # se estiver voando sob as árvores
-                reward -= 0.05
+            reward = -1.0
+        
+        if self.uav.movements.in_target(self.goal): # chegou no alvo
+            reward = 1.0
 
-        reward -= 0.01 # desconta a cada step...
+        # print(reward)
 
         return reward
     
     def _get_observation(self):
         laser_scan = self.uav.uav_info.get_laser_scan()
         uav_position = self.uav.uav_info.get_uav_position(tolist=True)
-        goal_distance = Geometry.euclidean_distance(uav_position, self.goal)
-
+        
         # trata obstaculos..
-        obstacles = np.array(laser_scan.ranges)[np.isinf(obstacles)] = laser_scan.range_max
+        obstacles = np.array(laser_scan.ranges)
+        obstacles = np.where(np.isinf(obstacles), laser_scan.range_max, obstacles)
 
-        observation = {
-            'goal_distance': goal_distance,
-            'position': uav_position,
-            'goal': self.goal,
-            'obstacles': obstacles,
-        }
-        return observation
+        distance_to_goal = self._distance_to_goal()
+        goal_vec = self._goal_vector()
+        return np.concatenate([obstacles, uav_position, [distance_to_goal], goal_vec])
 
     def _generate_random_goal(self):
         if self.n_hits_on_taget >= 2000:

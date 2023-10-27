@@ -48,13 +48,17 @@ def start():
     while rospy.get_time() <= 25.0 or uav.uav_info.get_active_tracker() == 'NullTracker':
         rospy.sleep(0.1)
 
-    uav.movements.goto([-24.0, 5.0, 2.5]) # ponto incial...
-    uav.movements.hover()
-    rospy.sleep(3)
+    # uav.movements.goto([-24.0, 5.0, 2.5]) # ponto incial...
+    # uav.movements.hover()
+    # rospy.sleep(3)
 
-    collector.start_collecting()
-    pp.run([10.5, -2.0, 2.0])
+    ranges = uav.uav_info.get_laser_scan().ranges
+    reduced_ranges = ranges[::2]
+    print(len(ranges), min(ranges), len(reduced_ranges), min(reduced_ranges))
+
+    # collector.start_collecting()
+    # pp.run([10.5, -2.0, 2.0])
     # pp.run([18.5, 10.0, 2.0])
-    collector.stop_collecting()
+    # collector.stop_collecting()
 
 start()
