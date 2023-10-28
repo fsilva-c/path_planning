@@ -22,7 +22,7 @@ mrs_env['UAV_TYPE'] = 'f450'
 mrs_env['WORLD_NAME'] = 'simulation_local'
 mrs_env['SENSORS'] = 'garmin_down'
 mrs_env['ODOMETRY_TYPE'] = 'gps'
-mrs_env['PX4_SIM_SPEED_FACTOR'] = '1'
+# mrs_env['PX4_SIM_SPEED_FACTOR'] = '3'
 
 filepath = pathlib.Path(__file__).resolve().parent
 worlds_dir = filepath.parent.parent
@@ -36,7 +36,8 @@ class FSPPEnv(gym.Env):
     N_HITS_RESET_GOAL = 200 # quantidade de acertos até resetar o goal
     N_SCENARIOS = 3
     POSSIBLE_GOALS = [
-        [0.0, 2.0, 2.0],
+        [0.0, 1.0, 1.2],
+        [0.0, 2.0, 1.2],
         [-1.5, 1.4, 2.5],
         [0.9, 2.9, 2.0],
         [1.8, -2.6, 3.0],
@@ -102,6 +103,7 @@ class FSPPEnv(gym.Env):
         velocity = self.ACTIONS.get(action)
         old_position = self.uav.uav_info.get_uav_position(tolist=True)
         self.uav.movements.apply_velocity(velocity)
+        rospy.sleep(0.025)
 
         observation = self._get_observation()
         reward = self._calculate_reward(old_position)
@@ -150,7 +152,7 @@ class FSPPEnv(gym.Env):
         distance_rate = old_distance - distance_to_goal
 
         if distance_rate > 0.0:
-            reward = distance_rate * 20.0
+            reward = distance_rate * 2.0
         if distance_rate <= 0.0:
             reward = -0.01
         

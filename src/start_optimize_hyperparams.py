@@ -5,7 +5,7 @@ import time
 import subprocess
 import rospy
 import optuna
-from RL_path_planner.fspp_env_v1 import FSPPEnv
+from RL_path_planner.fspp_env_v3 import FSPPEnv
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
@@ -27,10 +27,10 @@ def optimize_agent(trial):
     try:
         model_params = optimize_ppo(trial)
         env = DummyVecEnv([lambda: Monitor(FSPPEnv())])
-        model = PPO('MultiInputPolicy', env, verbose=0, device='cuda', **model_params)
+        model = PPO('MlpPolicy', env, verbose=0, device='cuda', **model_params)
         
         eval_callback = EvalCallback(env, best_model_save_path='.', log_path='.', eval_freq=1000, deterministic=True, render=False)
-        model.learn(total_timesteps=50000, callback=eval_callback)
+        model.learn(total_timesteps=100000, callback=eval_callback)
         
         mean_reward, _ = evaluate_policy(model, env, n_eval_episodes=50)
         return -1 * mean_reward

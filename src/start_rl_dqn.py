@@ -6,8 +6,8 @@ import time
 import rospy
 import subprocess
 from uav_interface.uav import UAV
-from RL_path_planner.fspp_env_v1 import FSPPEnv
-from stable_baselines3 import DQN
+from RL_path_planner.fspp_env_v3 import FSPPEnv
+from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import EvalCallback
@@ -32,13 +32,13 @@ def start():
     # logger...
     new_logger = configure('dqn_fsppenv_log', ['stdout', 'csv'])
 
-    model = DQN(
-        'MultiInputPolicy',
+    model = PPO(
+        'MlpPolicy',
         env,
         verbose=1,
         device='cuda',
         stats_window_size=1,
-    ) if 'best_model_DQN.zip' not in os.listdir('.') else DQN.load('best_model_DQN.zip', env=env)
+    )
 
     model.set_logger(new_logger)
 
