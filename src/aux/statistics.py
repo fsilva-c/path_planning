@@ -30,7 +30,6 @@ print(f'Altitude média: {mean_height} m')
 print(f'Variação de altitude: {var_height} m')
 
 '''
-# Análise de Velocidade Instantânea:
 import matplotlib.pyplot as plt
 
 # Visualização 3D do Caminho:
@@ -43,5 +42,3 @@ ax.set_ylabel('Y')
 ax.set_zlabel('Z')
 plt.show()
 '''
-
-
