@@ -9,7 +9,6 @@ from uav_interface.uav import UAV
 from RL_path_planner.ros_waiter import ROSWaiter
 from geometry.geometry import Geometry
 from geometry_msgs.msg import Vector3
-from std_srvs.srv import Empty
 
 import gym
 from gym.utils import seeding
@@ -22,7 +21,7 @@ mrs_env['UAV_TYPE'] = 'f450'
 mrs_env['WORLD_NAME'] = 'simulation_local'
 mrs_env['SENSORS'] = 'garmin_down'
 mrs_env['ODOMETRY_TYPE'] = 'gps'
-# mrs_env['PX4_SIM_SPEED_FACTOR'] = '3'
+mrs_env['PX4_SIM_SPEED_FACTOR'] = '4'
 
 filepath = pathlib.Path(__file__).resolve().parent
 worlds_dir = filepath.parent.parent
@@ -31,14 +30,14 @@ ros_macros = os.path.join(filepath.parent, 'ros_macros.sh')
 subprocess.Popen(f'bash -c "source {ros_macros}"', shell=True)
 
 class FSPPEnv(gym.Env):
-    MAX_DISTANCE = 5.0 # [m] distância máxima do goal...
+    MAX_DISTANCE = 3.0 # [m] distância máxima do goal...
     TREE_HEIGHT = 6.0 # [m]
-    N_HITS_RESET_GOAL = 200 # quantidade de acertos até resetar o goal
+    N_HITS_RESET_GOAL = 100 # quantidade de acertos até resetar o goal
     N_SCENARIOS = 3
     POSSIBLE_GOALS = [
         [0.0, 1.0, 1.2],
-        [0.0, 2.0, 1.2],
-        [-1.5, 1.4, 2.5],
+        [2.0, 0.0, 1.2],
+        [-1.5, 1.4, 2.0],
         [0.9, 2.9, 2.0],
         [1.8, -2.6, 3.0],
         [0.8, 3.5, 2.5],
@@ -86,6 +85,7 @@ class FSPPEnv(gym.Env):
         self.goal = goal
         self.initial_distance_to_goal = None
         self.n_hits_on_taget = 0
+        self.local_step = 0
 
         # gazebo comms...
         # self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
@@ -103,7 +103,9 @@ class FSPPEnv(gym.Env):
         velocity = self.ACTIONS.get(action)
         old_position = self.uav.uav_info.get_uav_position(tolist=True)
         self.uav.movements.apply_velocity(velocity)
-        rospy.sleep(0.025)
+        rospy.sleep(0.0001)
+
+        self.local_step += 1
 
         observation = self._get_observation()
         reward = self._calculate_reward(old_position)
@@ -146,23 +148,29 @@ class FSPPEnv(gym.Env):
         return Geometry.euclidean_distance(uav_position, self.goal)
 
     def _calculate_reward(self, old_position):
-        reward = 0
+        laser_scan = self.uav.uav_info.get_laser_scan()
         distance_to_goal = self._distance_to_goal()
         old_distance = Geometry.euclidean_distance(old_position, self.goal)
         distance_rate = old_distance - distance_to_goal
 
+        # distance rate
         if distance_rate > 0.0:
-            reward = distance_rate * 2.0
-        if distance_rate <= 0.0:
-            reward = -0.01
+            distance_reward = distance_rate * 10.0
+        else:
+            distance_reward = -0.05
         
-        if self.uav.uav_info.get_active_tracker() == 'NullTracker': # bateu e caiu
-            reward = -1.0
+        # obstacle rate
+        if min(laser_scan.ranges) < 0.20: # próximo de colisão !!!
+            obstacle_reward = -0.07
+        else:
+            obstacle_reward = 0.0
         
-        if self.uav.movements.in_target(self.goal): # chegou no alvo
-            reward = 1.0
+        reward = distance_reward + obstacle_reward
 
-        # print(reward)
+        if self.uav.movements.in_target(self.goal): # chegou no alvo
+            reward += 10
+        elif self.uav.uav_info.get_active_tracker() == 'NullTracker': # bateu e caiu
+            reward -= 10
 
         return reward
     
@@ -176,7 +184,7 @@ class FSPPEnv(gym.Env):
 
         distance_to_goal = self._distance_to_goal()
         goal_vec = self._goal_vector()
-        return np.concatenate([obstacles, uav_position, [distance_to_goal], goal_vec])
+        return np.concatenate([obstacles, uav_position, [distance_to_goal], goal_vec], dtype=np.float32)
 
     def _generate_random_goal(self):
         if self.n_hits_on_taget >= 2000:
@@ -201,6 +209,10 @@ class FSPPEnv(gym.Env):
             done = True
             self.n_hits_on_taget += 1
             rospy.loginfo('[FSPPEnv._check_episode_completion]: chegou no destino')
+        # elif self.local_step == 5000:
+        #     done = True
+        #     rospy.loginfo('[FSPPEnv._check_episode_completion]: timeout')
+        #     self.local_step = 0
         elif distance_to_goal > self.initial_distance_to_goal + self.MAX_DISTANCE: # se distanciou muito do goal
             done = True
             rospy.loginfo('[FSPPEnv._check_episode_completion]: se distanciou muito do goal')

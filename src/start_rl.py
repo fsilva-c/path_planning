@@ -38,7 +38,8 @@ def start():
         verbose=1,
         device='cuda',
         stats_window_size=1,
-    ) if 'best_model_PPO.zip' not in os.listdir('.') else PPO.load('best_model_PPO.zip', env=env)
+        ent_coef=0.01
+    )
 
     model.set_logger(new_logger)
 
@@ -48,7 +49,7 @@ def start():
         best_model_save_path='.'
     )
 
-    model.learn(total_timesteps=2e7, callback=eval_callback)
+    model.learn(total_timesteps=100000, callback=eval_callback)
     model.save('training_model_UAV_PPO')
 
 start()
