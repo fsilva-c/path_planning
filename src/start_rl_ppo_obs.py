@@ -4,12 +4,12 @@
 import time
 import rospy
 import subprocess
-import torch as th
 from uav_interface.uav import UAV
 from RL_path_planner.fspp_env_v3 import FSPPEnv
-from stable_baselines3 import PPO
+from stable_baselines3 import DQN
 from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.callbacks import CallbackList, CheckpointCallback
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.logger import configure
 
@@ -28,35 +28,38 @@ def start():
     rospy.loginfo('Iniciando os testes...')
 
     env = DummyVecEnv([lambda: Monitor(FSPPEnv())])
-    # env = FSPPEnv()
 
     # logger...
-    new_logger = configure('ppo_fsppenv_log', ['stdout', 'csv'])
+    new_logger = configure('dqn_fsppenv_log', ['stdout', 'csv'])
 
-    model = PPO(
+    # callback
+    callback = CallbackList([CheckpointCallback(
+        save_freq=10000,
+        name_prefix='DQN_model_test',
+        save_path='DQN_models_test'
+    )])
+
+    model = DQN(
         'MlpPolicy',
         env,
         verbose=1,
-        device='cuda',
-
-        ent_coef=0.01,
-        policy_kwargs = dict(
-            net_arch=dict(pi=[256, 256], vf=[256, 256]),
-            ortho_init=False,
-            activation_fn=th.nn.ReLU
-        )
+        train_freq=16,
+        gradient_steps=8,
+        gamma=0.99,
+        exploration_fraction=0.2,
+        exploration_final_eps=0.07,
+        target_update_interval=600,
+        learning_starts=1000,
+        buffer_size=100000,
+        batch_size=128,
+        learning_rate=4e-3,
+        policy_kwargs=dict(net_arch=[256, 256]),
+        seed=2,
     )
 
     model.set_logger(new_logger)
 
-    eval_callback = EvalCallback(
-        env, 
-        n_eval_episodes=5,
-        best_model_save_path='.'
-    )
-
-    # model.learn(total_timesteps=2e7, callback=eval_callback)
-    model.learn(total_timesteps=100_000, callback=eval_callback)
-    # model.save('training_model_UAV_PPO')
+    model.learn(total_timesteps=2e6, callback=callback)
+    model.save('training_model_UAV_DQN')
 
 start()
