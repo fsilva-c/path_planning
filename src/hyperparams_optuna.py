@@ -14,6 +14,9 @@ You can run this example as follows:
 from typing import Any
 from typing import Dict
 
+import subprocess
+import rospy
+import time
 import gym
 import optuna
 from optuna.pruners import MedianPruner
@@ -39,15 +42,14 @@ ENV = DummyVecEnv([lambda: Monitor(FSPPEnv())])
 DEFAULT_HYPERPARAMS = {
     "policy": "MlpPolicy",
     "env": ENV,
-    "verbose": 1
+    "verbose": 0        
 }
 
 def sample_ppo_params(trial: optuna.Trial) -> Dict[str, Any]:
     """Sampler for A2C hyperparameters."""
-    gamma = 1.0 - trial.suggest_float("gamma", 0.0001, 0.1, log=True)
-    max_grad_norm = trial.suggest_float("max_grad_norm", 0.3, 5.0, log=True)
-    gae_lambda = 1.0 - trial.suggest_float("gae_lambda", 0.001, 0.2, log=True)
     n_steps = 2 ** trial.suggest_int("exponent_n_steps", 3, 10)
+    gamma = 1.0 - trial.suggest_float("gamma", 0.0001, 0.1, log=True)
+    gae_lambda = 1.0 - trial.suggest_float("gae_lambda", 0.001, 0.2, log=True)
     learning_rate = trial.suggest_float("lr", 1e-5, 1, log=True)
     ent_coef = trial.suggest_float("ent_coef", 0.00000001, 0.1, log=True)
     net_arch = trial.suggest_categorical("net_arch", ["tiny", "small"])
@@ -59,7 +61,7 @@ def sample_ppo_params(trial: optuna.Trial) -> Dict[str, Any]:
     trial.set_user_attr("n_steps", n_steps)
 
     net_arch = dict(
-        {"pi": [64], "vf": [64]} if net_arch == "tiny" else {"pi": [128, 128], "vf": [128, 128]}
+        {"pi": [256, 256], "vf": [256, 256]} if net_arch == "tiny" else {"pi": [512, 512], "vf": [512, 512]}
     )
 
     activation_fn = {"tanh": nn.Tanh, "relu": nn.ReLU}[activation_fn]
@@ -70,7 +72,6 @@ def sample_ppo_params(trial: optuna.Trial) -> Dict[str, Any]:
         "gae_lambda": gae_lambda,
         "learning_rate": learning_rate,
         "ent_coef": ent_coef,
-        "max_grad_norm": max_grad_norm,
         "policy_kwargs": {
             "net_arch": net_arch,
             "activation_fn": activation_fn,
@@ -129,7 +130,7 @@ def objective(trial: optuna.Trial) -> float:
 
     nan_encountered = False
     try:
-        model.learn(N_TIMESTEPS, callback=eval_callback)
+        model.learn(total_timesteps=N_TIMESTEPS, callback=eval_callback)
     except AssertionError as e:
         # Sometimes, random hyperparams can generate NaN.
         print(e)
@@ -151,15 +152,25 @@ def objective(trial: optuna.Trial) -> float:
 
 if __name__ == "__main__":
     # Set pytorch num threads to 1 for faster training.
-    torch.set_num_threads(1)
+    torch.set_num_threads(12)
 
     sampler = TPESampler(n_startup_trials=N_STARTUP_TRIALS)
     # Do not prune before 1/3 of the max budget is used.
     pruner = MedianPruner(n_startup_trials=N_STARTUP_TRIALS, n_warmup_steps=N_EVALUATIONS // 3)
 
+    print('Realizando tuning dos hyperparâmetros...')
+    subprocess.Popen(
+        'roscore',
+        shell=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT) # inicia ros master...
+    time.sleep(2.0)
+    rospy.init_node('rl_tuning', anonymous=True)
+    rospy.loginfo('Iniciando os testes...')
+
     study = optuna.create_study(sampler=sampler, pruner=pruner, direction="maximize")
     try:
-        study.optimize(objective, n_trials=N_TRIALS, timeout=600)
+        study.optimize(objective, n_trials=N_TRIALS)
     except KeyboardInterrupt:
         pass
 

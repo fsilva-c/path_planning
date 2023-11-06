@@ -236,7 +236,7 @@ class FSPPEnv(gym.Env):
 
         # gazebo simulation
         self._start_mrs_node(
-            f'roslaunch mrs_simulation simulation.launch gui:=true world_file:={world_file}',
+            f'roslaunch mrs_simulation simulation.launch gui:=false world_file:={world_file}',
             waiter=self.ros_waiter.wait_for_ros)
         
         # spawner...
