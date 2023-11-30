@@ -11,6 +11,10 @@ You can run this example as follows:
     $ python sb3_simple.py
 
 """
+import subprocess
+import time
+import rospy
+
 from typing import Any
 from typing import Dict
 
@@ -39,7 +43,7 @@ ENV = DummyVecEnv([lambda: Monitor(FSPPEnv())])
 DEFAULT_HYPERPARAMS = {
     "policy": "MlpPolicy",
     "env": ENV,
-    "verbose": 1
+    "verbose": 0
 }
 
 def sample_ppo_params(trial: optuna.Trial) -> Dict[str, Any]:
@@ -150,8 +154,19 @@ def objective(trial: optuna.Trial) -> float:
 
 
 if __name__ == "__main__":
+    subprocess.Popen(
+        'roscore',
+        shell=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT) # inicia ros master...
+    
+    time.sleep(2.0)
+
+    rospy.init_node('rl_mission', anonymous=True)
+    rospy.loginfo('Iniciando os testes...')
+
     # Set pytorch num threads to 1 for faster training.
-    torch.set_num_threads(1)
+    torch.set_num_threads(12)
 
     sampler = TPESampler(n_startup_trials=N_STARTUP_TRIALS)
     # Do not prune before 1/3 of the max budget is used.
@@ -159,7 +174,7 @@ if __name__ == "__main__":
 
     study = optuna.create_study(sampler=sampler, pruner=pruner, direction="maximize")
     try:
-        study.optimize(objective, n_trials=N_TRIALS, timeout=600)
+        study.optimize(objective, n_trials=N_TRIALS)
     except KeyboardInterrupt:
         pass
 

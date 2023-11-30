@@ -1,7 +1,8 @@
 ### Python ###
 
-src/ppo_fsppenv_log/
+src/*_log/
 test_*.py
+src/*_models_test
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

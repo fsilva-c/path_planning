@@ -6,11 +6,10 @@ import rospy
 import subprocess
 from uav_interface.uav import UAV
 from RL_path_planner.fspp_env_v3 import FSPPEnv
-from stable_baselines3 import DQN
-from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
-from stable_baselines3.common.monitor import Monitor
+from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CallbackList, CheckpointCallback
 from stable_baselines3.common.logger import configure
+from stable_baselines3.common.env_util import make_vec_env
 
 MODE = 'train'
 uav = UAV(uav_id=1)
@@ -29,31 +28,30 @@ def start():
 
     total_steps = 50000000
 
-    fspp_env = FSPPEnv()
-    env = DummyVecEnv([lambda: Monitor(fspp_env)])
+    env = make_vec_env(FSPPEnv)
 
     # logger...
-    new_logger = configure('DQN_fsppenv_log', ['stdout', 'csv'])
+    new_logger = configure('PPO_fsppenv_log', ['stdout', 'csv'])
 
     # callback
     callback = CallbackList([CheckpointCallback(
         save_freq=100_000,
-        name_prefix='DQN_model_test',
-        save_path='DQN_models_test'
+        name_prefix='PPO_model_test',
+        save_path='PPO_models_test'
     )])
 
-    model = DQN(
+    model = PPO(
         'MultiInputPolicy',
         env,
-        verbose=1
+        verbose=0,
     )
 
-    # model = DQN.load('DQN_models_test/LAST_DQN_model_test_20100000_steps', env=env)
-    
+    # model = PPO.load('DQN_models_test/LAST_DQN_model_test_18400000_steps', env=env)
+
     if MODE == 'train':
         model.set_logger(new_logger)
-        model.learn(total_timesteps=total_steps, callback=callback, reset_num_timesteps=False)
-        model.save('UAV_NAV_DQN')
+        model.learn(total_timesteps=total_steps, callback=callback)
+        model.save('training_model_UAV_PPO')
     else:
         obs = env.reset()
         while True:
