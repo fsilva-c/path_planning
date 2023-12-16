@@ -3,6 +3,7 @@
 src/*_log/
 test_*.py
 src/*_models_test
+src/dqn_fsppenv_log
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
