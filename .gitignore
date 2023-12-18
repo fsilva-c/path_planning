@@ -4,6 +4,7 @@ src/*_log/
 test_*.py
 src/*_models_test
 src/dqn_fsppenv_log
+src/training_model_*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -4,7 +4,7 @@
 import rospy
 from uav_interface.uav import UAV
 from uav_interface.position_collector import PositionCollector
-from classic_path_planner.path_planner import PathPlanner
+from classical_path_planner.path_planner import PathPlanner
 
 uav = UAV(uav_id=1)
 pp = PathPlanner()

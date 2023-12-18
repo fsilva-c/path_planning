@@ -1,5 +1,4 @@
 import os
-import random
 import time
 import subprocess
 import rospy
@@ -9,6 +8,7 @@ from uav_interface.uav import UAV
 from RL_path_planner.ros_waiter import ROSWaiter
 from geometry.geometry import Geometry
 from geometry_msgs.msg import Vector3
+from RL_path_planner.worlds import probabilistics_forest
 
 import gym
 from gym.utils import seeding
@@ -32,118 +32,90 @@ subprocess.Popen(f'bash -c "source {ros_macros}"', shell=True)
 class FSPPEnv(gym.Env):
     MAX_DISTANCE = 5.0 # [m] distância máxima do goal...
     N_HITS_RESET_GOAL = 200 # quantidade de acertos até resetar o goal
-    MAX_N_EPISODES_ON_EMPTY_WORLD = 1000 # número máximo de episódios no cenário vazio...
-    N_SCENARIOS = 4
-    POSSIBLE_GOALS = [
-        [0.0, -2.0, 1.2], 
-        [2.0, 0.0, 1.2],
-        [-1.5, 1.4, 2.0],
-        [0.9, 2.9, 2.0],
-        [1.8, -2.6, 3.0],
-        [0.8, 3.5, 2.5],
-        [-4.0, 4.5, 2.5],
-        [4.4, -4.3, 3.0],
-        [1.2, -6.8, 2.0],
-        [10.1, -1.1, 2.5],
-        [-8.0, 8.0, 2.5],
-        [2.7, -13.2, 3.0],
-        [3.0, -13.3, 3.0],
-        [15.5, 8.8, 2.0],
-        [18.5, 13.1, 1.5],
-        [-24.2, 5.7, 2.5],
-        [-27.5, 8.7, 1.5],
-        [20.5, 22.2, 1.2],
-        [-45.1, 30.0, 2.0],
-    ]
-    ACTIONS = {
-        0: Vector3(0.5, 0.0, 0.0),  # direita...
-        1: Vector3(-0.5, 0.0, 0.0), # esquerda...
-        2: Vector3(0.0, 0.5, 0.0),  # frente...
-        3: Vector3(0.0, -0.5, 0.0), # trás...
-        4: Vector3(0.0, 0.0, 0.5),  # subir...
-        5: Vector3(0.0, 0.0, -0.5)  # descer...
-    }
+    MAX_EPISODE_DURATION = rospy.Duration(180.0) # [s] tempo máximo para cada episódio
+    MAX_CURRICULUM_LEARNING = 50 # [m] distância máxima da dificuldade...
 
-    def __init__(self, uav_id=1, goal=None, mode='train') -> None:
+    def __init__(
+            self, 
+            uav_id=1, 
+            start=None,
+            goal=None,
+            act_space='continuos',
+            mode='train'
+        ) -> None:
         self.uav = UAV(uav_id=uav_id)
+        self.start = start
+        self.goal = goal
+        self.act_space = act_space
+        self.mode = mode
         self.seed()
 
         '''
-        ## observation space...
-            # os n obstaculos mais próximos (cada obstáculo é um ponto x, y. logo, n * 2)
+            ## observation space...
             # vetor para o objetivo (ponto 3D)
+            # leituras do sensor RPLidar (ranges)
         '''
 
         # observation space...
-        self.n_laser_vectors = 360
-        self._laser_scan = self.uav.uav_info.laser_scan
-
-        self.observation_space = spaces.Dict({
-            # vetor para o objetivo
-            'goal_vector': spaces.Box(low=0.0, high=np.inf, shape=(3,), dtype=np.float32),
-            # n_laser_vectors lasers (vectors) para os obstáculos ordenados pela distância para o uav
-            'obstacles': spaces.Box(
-                low=self._laser_scan.range_min, 
-                high=self._laser_scan.range_max, 
-                shape=(self.n_laser_vectors, 2),
-                dtype=np.float32)
-        })
+        num_laser_readings = 720
+        low = np.array([-100.0, -100.0, -100.0] + [0.0] * num_laser_readings)
+        high = np.array([100.0, 100.0, 100.0] + [15.0] * num_laser_readings)
+        self.observation_space = spaces.Box(np.float32(low), np.float32(high), dtype=np.float32)
 
         # action space...
-        self.action_space = spaces.Discrete(6)
+        if self.act_space == 'continuos':
+            no_of_actions = 3
+            self.action_space = gym.spaces.Box(
+                low=np.full(no_of_actions,-1,np.float32),
+                high=np.full(no_of_actions,1,np.float32), 
+                dtype=np.float32
+            )
+        else:
+            self.discrete_actions = {
+                0: Vector3(0.5, 0.0, 0.0),  # direita...
+                1: Vector3(-0.5, 0.0, 0.0), # esquerda...
+                2: Vector3(0.0, 0.5, 0.0),  # frente...
+                3: Vector3(0.0, -0.5, 0.0), # trás...
+                4: Vector3(0.0, 0.0, 0.5),  # subir...
+                5: Vector3(0.0, 0.0, -0.5), # descer...
+                6: Vector3(0.0, 0.0, 0.0)   # parado...
+            }
+            self.action_space = spaces.Discrete(7)
 
-        self.goal = goal
-        self.mode = mode
         self.initial_distance_to_goal = None
         self.n_hits_on_target = 0
-        self.n_episodes_on_empty_world = 0
-
-        # gazebo comms...
-        # self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
-        # self.pause = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
-
-        # mrs ros nodes...
-        self.ros_waiter = ROSWaiter('uav1')
-
-        self.step_counter = 0
+        self.ros_waiter = ROSWaiter('uav1') # mrs ros nodes...
+        self.curriculum_learning = 1
+        self.episode_duration = None
+        self.n_hits_on_target = 0
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
     def step(self, action):
-        # self.unpause()
-        velocity = self.ACTIONS.get(action)
+        if self.act_space == 'continuos':
+            velocity = Vector3(*action)
+        else:
+            velocity = self.discrete_actions.get(action)
         self.uav.movements.apply_velocity(velocity)
 
         observation = self._get_observation()
         reward = self._calculate_reward()
         done = self._check_episode_completion()
-
         # print(f'observation: {observation}, reward: {reward}, action: {action}')
         # print(f'reward: {reward}')
         # print(action)
         return observation, reward, done, {}
 
     def reset(self):
-        self.step_counter += 1
-
-        # rospy.loginfo('[FSPPEnv.reset]: antes _reset_mrs_nodes')
         self._reset_mrs_nodes()
         self.uav.movements.takeoff()
-        # rospy.loginfo('[FSPPEnv.reset]: depois _reset_mrs_nodes')
-
-        if self.mode == 'train':
-            # gera um novo goal a cada self.N_HITS_RESET_GOAL (acerto) no target...
-            if self.n_hits_on_target % self.N_HITS_RESET_GOAL == 0:
-                self.goal = self._get_goal()
-
         self.initial_distance_to_goal = Geometry.euclidean_distance(
             self.uav.uav_info.get_uav_position(tolist=True), self.goal)
-        
+        self.episode_duration = rospy.Time.now()
         rospy.loginfo('[FSPPEnv.reset]: env resetado')
         print(f'GOAL: {self.goal}, {self.n_hits_on_target}')
-
         return self._get_observation()
     
     def _goal_vector(self):
@@ -180,64 +152,40 @@ class FSPPEnv(gym.Env):
         else:
             end_reward = 0.0
 
-        reward = goal_distance_reward + obstacle_reward + end_reward # + aprox_reward
+        reward = goal_distance_reward + obstacle_reward + end_reward
 
         return reward
 
     def _get_observation(self):
-        uav_position = np.array(self.uav.uav_info.get_uav_position(tolist=True)[:2]) # somente x,y
-        obstacles = np.array(list(self.uav.map_environment.get_obstacles_rplidar()))
-
-        if not obstacles.any(): # laser não colidiu com nenhum obstáculo...
-            obstacles = np.array([[14, 14]])
-
-        dists = np.linalg.norm(obstacles - uav_position, axis=1)
-        closests_idx = np.argsort(dists)[:self.n_laser_vectors]
-
-        if len(closests_idx) < self.n_laser_vectors: # completa o array com o valor max do laser... não colidiu com algum obstáculo
-            closests_points = np.vstack([obstacles[closests_idx], [[14, 14]] * (self.n_laser_vectors - len(closests_idx))])
-        else: 
-            closests_points = obstacles[closests_idx]
-
-        # vetor para o objetivo...
+        laser_scan = self.uav.uav_info.get_laser_scan()
+        obstacles = np.array(laser_scan.ranges)
+        obstacles = np.where(np.isinf(obstacles), laser_scan.range_max, obstacles)
         goal_vec = self._goal_vector()
-
-        observation = {
-            'goal_vector': goal_vec,
-            'obstacles': closests_points,
-        }
-
-        return observation
-
-    def _get_goal(self):
-        if self.n_hits_on_target >= 4000:
-            index = np.random.randint(len(self.POSSIBLE_GOALS))
-            goal = self.POSSIBLE_GOALS[index]
-        else:
-            # pega um goal de acordo com o nível atual de dificuldade...
-            difficulty_factor = self.n_hits_on_target // self.N_HITS_RESET_GOAL
-            index = min(difficulty_factor, len(self.POSSIBLE_GOALS) - 1)
-            goal = self.POSSIBLE_GOALS[index]
-        return goal
+        return np.concatenate([goal_vec, obstacles], dtype=np.float32)
+    
+    def _eval_curriculum_learning(self):
+        self.n_hits_on_target += 1
+        if self.n_hits_on_target % self.N_HITS_RESET_GOAL == 0:
+            self.curriculum_learning = min(self.curriculum_learning + 1, self.MAX_CURRICULUM_LEARNING)
 
     def _check_episode_completion(self): # verificando se o episódio terminou...
         done = False
-        distance_to_goal = self._distance_to_goal()
-
         if self.uav.uav_info.get_active_tracker() == 'NullTracker': # bateu e caiu
             done = True
             rospy.loginfo('[FSPPEnv._check_episode_completion]: bateu e caiu')
         elif self.uav.movements.in_target(self.goal): # chegou no destino
             done = True
-            self.n_hits_on_target += 1 if self.n_episodes_on_empty_world < self.MAX_N_EPISODES_ON_EMPTY_WORLD else 0
+            self._eval_curriculum_learning()
             rospy.loginfo('[FSPPEnv._check_episode_completion]: chegou no destino')
-        elif distance_to_goal > self.initial_distance_to_goal + self.MAX_DISTANCE: # se distanciou muito do goal
+        elif self._distance_to_goal() > self.initial_distance_to_goal + self.MAX_DISTANCE: # se distanciou muito do goal
             done = True
             rospy.loginfo('[FSPPEnv._check_episode_completion]: se distanciou muito do goal')
         elif self.uav.uav_info.get_uav_position().z < 0.7: # voando muito baixo
             done = True
             rospy.loginfo('[FSPPEnv._check_episode_completion]: voando muito baixo...')
-
+        elif rospy.Time.now() - self.episode_duration >= self.MAX_EPISODE_DURATION:
+            done = True
+            rospy.loginfo('[FSPPEnv._check_episode_completion]: timeout...')
         return done
     
     def _reset_mrs_nodes(self):
@@ -246,40 +194,30 @@ class FSPPEnv(gym.Env):
     
     def _start_nodes(self):
         # obtém um cenário de forma aleatória...
-        scenario = random.randint(1, self.N_SCENARIOS)
-        if self.n_episodes_on_empty_world < self.MAX_N_EPISODES_ON_EMPTY_WORLD: # cenário vazio...
-            world_file = 'world_name:=grass_plane'
-            self.n_episodes_on_empty_world += 1
-        else: # cenário com as árvores...
-            world_file = f'world_file:={worlds_dir}/worlds/tree_scenario_{scenario}.world'
+        coords = probabilistics_forest.apply_distribution()
+        safe_points = probabilistics_forest.find_safe_points(coords, dist=self.curriculum_learning)
+        if self.mode == 'train':
+            self.start = safe_points[0]
+            self.goal = [*safe_points[1], np.random.uniform(1, 5)]
 
         # gazebo simulation
         self._start_mrs_node(
-            f'roslaunch mrs_simulation simulation.launch gui:=false {world_file}',
+            f'roslaunch mrs_simulation simulation.launch gui:=false world_file:={filepath}/worlds/probabilistics/forest.world',
             waiter=self.ros_waiter.wait_for_ros)
         
         # spawner...
         self._start_mrs_node(
-            'rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-rplidar --pos 0 0 1 0"',
+            f'rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-rplidar --pos {self.start[0]} {self.start[1]} 1 0"',
             waiter=self.ros_waiter.wait_for_simulation)
         
         # uav_general automatic_start...
         self._start_mrs_node(
             'roslaunch mrs_uav_general automatic_start.launch',
             waiter=self.ros_waiter.wait_for_simulation)
-
+        
         # uav_general core...
         self._start_mrs_node('roslaunch mrs_uav_general core.launch',
-            waiter=self.ros_waiter.wait_for_odometry)
-
-        # # takeoff
-        # self._start_mrs_node(
-        #     """
-        #     rosservice call /$UAV_NAME/mavros/cmd/arming 1;
-        #     sleep 2;
-        #     rosservice call /$UAV_NAME/mavros/set_mode 0 offboard
-        #     """,
-        #     waiter=self.ros_waiter.wait_for_control)
+            waiter=self.ros_waiter.wait_for_odometry)        
         
         time.sleep(8)
 

@@ -52,9 +52,9 @@ CATKIN_DEPENDS message_generation message_runtime rospy roscpp std_msgs
 )
 
 include_directories(
-  src/classic_path_planner/astar
+  src/classical_path_planner/astar
   ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(astar src/classic_path_planner/astar/astar.cpp)
+add_executable(astar src/classical_path_planner/astar/astar.cpp)
 target_link_libraries(astar ${catkin_LIBRARIES})
