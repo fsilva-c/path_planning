@@ -25,13 +25,13 @@ def start():
     rospy.init_node('rl_mission', anonymous=True)
     rospy.loginfo('Iniciando os testes...')
 
-    total_steps = 2e7
+    total_steps = 1e8
     env = make_vec_env(FSPPEnv)
     new_logger = configure('PPO_fsppenv_log', ['stdout', 'csv'])
 
     # callback
     callback = CallbackList([CheckpointCallback(
-        save_freq=100_000,
+        save_freq=200_000,
         name_prefix='PPO_model_test',
         save_path='PPO_models_test'
     )])

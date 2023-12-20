@@ -34,6 +34,7 @@ class FSPPEnv(gym.Env):
     N_HITS_RESET_GOAL = 200 # quantidade de acertos até resetar o goal
     MAX_EPISODE_DURATION = rospy.Duration(180.0) # [s] tempo máximo para cada episódio
     MAX_CURRICULUM_LEARNING = 50 # [m] distância máxima da dificuldade...
+    MAX_CURRICULUM_LEARNING_PLANAR_GOAL_Z = 3 # quantidade de dificuldades com o goal fixo em z
 
     def __init__(
             self, 
@@ -111,10 +112,12 @@ class FSPPEnv(gym.Env):
     def reset(self):
         self._reset_mrs_nodes()
         self.uav.movements.takeoff()
-        self.initial_distance_to_goal = Geometry.euclidean_distance(
-            self.uav.uav_info.get_uav_position(tolist=True), self.goal)
+        uav_position = self.uav.uav_info.get_uav_position(tolist=True)
+        self.initial_distance_to_goal = Geometry.euclidean_distance(uav_position, self.goal)
         self.episode_duration = rospy.Time.now()
         rospy.loginfo('[FSPPEnv.reset]: env resetado')
+        if self.curriculum_learning <= self.MAX_CURRICULUM_LEARNING_PLANAR_GOAL_Z:
+            self.goal[2] = uav_position[2]
         print(f'GOAL: {self.goal}, {self.n_hits_on_target}')
         return self._get_observation()
     
@@ -132,17 +135,10 @@ class FSPPEnv(gym.Env):
         return Geometry.euclidean_distance(uav_position, self.goal)
 
     def _calculate_reward(self):
-        laser_scan = self.uav.uav_info.get_laser_scan()
         distance_to_goal = self._distance_to_goal()
 
         # goal_distance rate
         goal_distance_reward = -0.1 * distance_to_goal
-        
-        # obstacle rate
-        if np.min(laser_scan.ranges) < 0.5: # [m] próximo de colisão !!!
-            obstacle_reward = -0.1
-        else:
-            obstacle_reward = 0.0
 
         # ended episode rate
         if self.uav.movements.in_target(self.goal): # chegou no alvo
@@ -152,7 +148,7 @@ class FSPPEnv(gym.Env):
         else:
             end_reward = 0.0
 
-        reward = goal_distance_reward + obstacle_reward + end_reward
+        reward = goal_distance_reward + end_reward
 
         return reward
 
