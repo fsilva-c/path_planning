@@ -35,6 +35,7 @@ class FSPPEnv(gym.Env):
     MAX_EPISODE_DURATION = rospy.Duration(180.0) # [s] tempo máximo para cada episódio
     MAX_CURRICULUM_LEARNING = 50 # [m] distância máxima da dificuldade...
     MAX_CURRICULUM_LEARNING_PLANAR_GOAL_Z = 3 # quantidade de dificuldades com o goal fixo em z
+    N_SECTORS_RLPIDAR = 36
 
     def __init__(
             self, 
@@ -58,9 +59,9 @@ class FSPPEnv(gym.Env):
         '''
 
         # observation space...
-        num_laser_readings = 720
-        low = np.array([-100.0, -100.0, -100.0] + [0.0] * num_laser_readings)
-        high = np.array([100.0, 100.0, 100.0] + [15.0] * num_laser_readings)
+        self.n_laser_readings = int(720 / self.N_SECTORS_RLPIDAR)
+        low = np.array([-100.0, -100.0, -100.0] + [0.0] * self.N_SECTORS_RLPIDAR)
+        high = np.array([100.0, 100.0, 100.0] + [15.0] * self.N_SECTORS_RLPIDAR)
         self.observation_space = spaces.Box(np.float32(low), np.float32(high), dtype=np.float32)
 
         # action space...
@@ -154,10 +155,11 @@ class FSPPEnv(gym.Env):
 
     def _get_observation(self):
         laser_scan = self.uav.uav_info.get_laser_scan()
-        obstacles = np.array(laser_scan.ranges)
-        obstacles = np.where(np.isinf(obstacles), laser_scan.range_max, obstacles)
+        ranges = np.array(laser_scan.ranges)
+        sectors = np.mean(ranges.reshape(-1, self.n_laser_readings), axis=1)
+        sectors = np.where(np.isinf(sectors), laser_scan.range_max, sectors)
         goal_vec = self._goal_vector()
-        return np.concatenate([goal_vec, obstacles], dtype=np.float32)
+        return np.concatenate([goal_vec, sectors], dtype=np.float32)
     
     def _eval_curriculum_learning(self):
         self.n_hits_on_target += 1

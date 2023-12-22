@@ -53,11 +53,13 @@ def start():
     # uav.movements.hover()
     # rospy.sleep(3)
 
-    '''
-    ranges = uav.uav_info.get_laser_scan().ranges
-    reduced_ranges = ranges[::2]
-    print(len(ranges), min(ranges), len(reduced_ranges), min(reduced_ranges))
-    '''
+    laser_scan = uav.uav_info.get_laser_scan()
+    ranges = np.array(laser_scan.ranges)
+    sectors = np.mean(ranges.reshape(-1, 20), axis=1)
+    sectors = np.where(np.isinf(sectors), laser_scan.range_max, sectors)
+    print(sectors)
+    print(len(sectors), min(sectors))
+    exit()
     n = 36
     uav_position = np.array(uav.uav_info.get_uav_position(tolist=True)[:2]) # somente x,y
     obstacles = np.array(list(uav.map_environment.get_obstacles_rplidar()))
