@@ -10,7 +10,7 @@ class ROSWaiter:
         while True:
             try:
                 subprocess.check_call(
-                    ['timeout', '6s', 'rosparam', 'get', '/run_id'], 
+                    ['timeout', '4s', 'rosparam', 'get', '/run_id'], 
                     stdout=subprocess.DEVNULL, 
                     stderr=subprocess.DEVNULL)
                 break
@@ -24,7 +24,7 @@ class ROSWaiter:
         while True:
             try:
                 subprocess.check_call(
-                    ['timeout', '6s', 'rostopic', 'echo', '/gazebo/model_states', '-n', '1', '--noarr'], 
+                    ['timeout', '4s', 'rostopic', 'echo', '/gazebo/model_states', '-n', '1', '--noarr'], 
                     stdout=subprocess.DEVNULL, 
                     stderr=subprocess.DEVNULL)
                 break
@@ -38,7 +38,7 @@ class ROSWaiter:
         while True:
             try:
                 subprocess.check_call(
-                    ['timeout', '6s', 'rostopic', 'echo', f'/{self.uav_name}/mavros/local_position/odom', '-n', '1', '--noarr'], 
+                    ['timeout', '4s', 'rostopic', 'echo', f'/{self.uav_name}/mavros/local_position/odom', '-n', '1', '--noarr'], 
                     stdout=subprocess.DEVNULL, 
                     stderr=subprocess.DEVNULL)
                 break
@@ -51,7 +51,7 @@ class ROSWaiter:
         while True:
             try:
                 subprocess.check_call(
-                    ['timeout', '6s', 'rostopic', 'echo', f'/{self.uav_name}/control_manager/diagnostics', '-n', '1', '--noarr'], 
+                    ['timeout', '4s', 'rostopic', 'echo', f'/{self.uav_name}/control_manager/diagnostics', '-n', '1', '--noarr'], 
                     stdout=subprocess.DEVNULL, 
                     stderr=subprocess.DEVNULL)
                 break
@@ -61,7 +61,7 @@ class ROSWaiter:
         while True:
             try:
                 subprocess.check_call(
-                    ['timeout', '6s', 'rostopic', 'echo', f'/{self.uav_name}/odometry/odom_main', '-n', '1', '--noarr'], 
+                    ['timeout', '4s', 'rostopic', 'echo', f'/{self.uav_name}/odometry/odom_main', '-n', '1', '--noarr'], 
                     stdout=subprocess.DEVNULL, 
                     stderr=subprocess.DEVNULL)
                 break
@@ -74,7 +74,7 @@ class ROSWaiter:
         while True:
             try:
                 subprocess.check_call(
-                    ['timeout', '6s', 'rostopic', 'echo', f'/{self.uav_name}/control_manager/offboard_on', '-n', '1', '--noarr'], 
+                    ['timeout', '4s', 'rostopic', 'echo', f'/{self.uav_name}/control_manager/offboard_on', '-n', '1', '--noarr'], 
                     stdout=subprocess.DEVNULL, 
                     stderr=subprocess.DEVNULL)
                 break

@@ -36,8 +36,8 @@ def start():
         save_path='PPO_models_test'
     )])
 
-    model = PPO('MlpPolicy', env, verbose=0)
-    # model = PPO.load('DQN_models_test/LAST_DQN_model_test_18400000_steps', env=env)
+    model = PPO('MlpPolicy', env, device='cuda', verbose=0)
+    # model = PPO.load('PPO_models_test/LAST_PPO_model_test_36800000_steps', env=env, verbose=0)
     
     if MODE == 'train':
         model.set_logger(new_logger)

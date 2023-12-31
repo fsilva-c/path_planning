@@ -1,5 +1,6 @@
 ### Python ###
 
+src/models-ai
 src/*_log/
 test_*.py
 src/*_models_test

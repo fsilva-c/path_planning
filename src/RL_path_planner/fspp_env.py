@@ -31,8 +31,7 @@ subprocess.Popen(f'bash -c "source {ros_macros}"', shell=True)
 
 class FSPPEnv(gym.Env):
     MAX_DISTANCE = 5.0 # [m] distância máxima do goal...
-    N_HITS_RESET_GOAL = 200 # quantidade de acertos até resetar o goal
-    MAX_EPISODE_DURATION = rospy.Duration(180.0) # [s] tempo máximo para cada episódio
+    N_HITS_RESET_GOAL = 100 # quantidade de acertos até resetar o goal
     MAX_CURRICULUM_LEARNING = 50 # [m] distância máxima da dificuldade...
     MAX_CURRICULUM_LEARNING_PLANAR_GOAL_Z = 3 # quantidade de dificuldades com o goal fixo em z
     N_SECTORS_RLPIDAR = 36
@@ -68,8 +67,8 @@ class FSPPEnv(gym.Env):
         if self.act_space == 'continuos':
             no_of_actions = 3
             self.action_space = gym.spaces.Box(
-                low=np.full(no_of_actions,-1,np.float32),
-                high=np.full(no_of_actions,1,np.float32), 
+                low=np.full(no_of_actions, -1, np.float32),
+                high=np.full(no_of_actions, 1, np.float32), 
                 dtype=np.float32
             )
         else:
@@ -181,7 +180,7 @@ class FSPPEnv(gym.Env):
         elif self.uav.uav_info.get_uav_position().z < 0.7: # voando muito baixo
             done = True
             rospy.loginfo('[FSPPEnv._check_episode_completion]: voando muito baixo...')
-        elif rospy.Time.now() - self.episode_duration >= self.MAX_EPISODE_DURATION:
+        elif rospy.Time.now() - self.episode_duration >= rospy.Duration(self.curriculum_learning*2+10):
             done = True
             rospy.loginfo('[FSPPEnv._check_episode_completion]: timeout...')
         return done
@@ -215,9 +214,9 @@ class FSPPEnv(gym.Env):
         
         # uav_general core...
         self._start_mrs_node('roslaunch mrs_uav_general core.launch',
-            waiter=self.ros_waiter.wait_for_odometry)        
+            waiter=self.ros_waiter.wait_for_odometry)
         
-        time.sleep(8)
+        time.sleep(4)
 
     def _kill_nodes(self):
         kill_path = os.path.join(filepath.parent, 'kill.sh')
