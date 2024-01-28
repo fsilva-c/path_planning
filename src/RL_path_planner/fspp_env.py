@@ -33,7 +33,8 @@ class FSPPEnv(gym.Env):
     MAX_DISTANCE = 5.0 # [m] distância máxima do goal...
     N_HITS_RESET_GOAL = 100 # quantidade de acertos até resetar o goal
     MAX_CURRICULUM_LEARNING = 50 # [m] distância máxima da dificuldade...
-    MAX_CURRICULUM_LEARNING_PLANAR_GOAL_Z = 3 # quantidade de dificuldades com o goal fixo em z
+    MAX_CURRICULUM_LEARNING_PLANAR_GOAL_Z = 5 # quantidade de dificuldades com o goal fixo em z
+    MAX_EPISODES_PER_WORLD = 10 # quantidade de episódios com um mundo
     N_SECTORS_RLPIDAR = 36
 
     def __init__(
@@ -79,16 +80,15 @@ class FSPPEnv(gym.Env):
                 3: Vector3(0.0, -0.5, 0.0), # trás...
                 4: Vector3(0.0, 0.0, 0.5),  # subir...
                 5: Vector3(0.0, 0.0, -0.5), # descer...
-                6: Vector3(0.0, 0.0, 0.0)   # parado...
             }
-            self.action_space = spaces.Discrete(7)
+            self.action_space = spaces.Discrete(len(self.discrete_actions))
 
         self.initial_distance_to_goal = None
-        self.n_hits_on_target = 0
         self.ros_waiter = ROSWaiter('uav1') # mrs ros nodes...
-        self.curriculum_learning = 1
+        self.curriculum_learning = 0.5
         self.episode_duration = None
         self.n_hits_on_target = 0
+        self.n_episodes = 0
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -119,6 +119,7 @@ class FSPPEnv(gym.Env):
         if self.curriculum_learning <= self.MAX_CURRICULUM_LEARNING_PLANAR_GOAL_Z:
             self.goal[2] = uav_position[2]
         print(f'GOAL: {self.goal}, {self.n_hits_on_target}')
+        self.n_episodes += 1
         return self._get_observation()
     
     def _goal_vector(self):
@@ -163,7 +164,7 @@ class FSPPEnv(gym.Env):
     def _eval_curriculum_learning(self):
         self.n_hits_on_target += 1
         if self.n_hits_on_target % self.N_HITS_RESET_GOAL == 0:
-            self.curriculum_learning = min(self.curriculum_learning + 1, self.MAX_CURRICULUM_LEARNING)
+            self.curriculum_learning = min(self.curriculum_learning + 0.5, self.MAX_CURRICULUM_LEARNING)
 
     def _check_episode_completion(self): # verificando se o episódio terminou...
         done = False
@@ -191,9 +192,9 @@ class FSPPEnv(gym.Env):
     
     def _start_nodes(self):
         # obtém um cenário de forma aleatória...
-        coords = probabilistics_forest.apply_distribution()
-        safe_points = probabilistics_forest.find_safe_points(coords, dist=self.curriculum_learning)
-        if self.mode == 'train':
+        if self.mode == 'train' and self.n_episodes % self.MAX_EPISODES_PER_WORLD == 0:
+            coords = probabilistics_forest.apply_distribution()
+            safe_points = probabilistics_forest.find_safe_points(coords, dist=self.curriculum_learning)
             self.start = safe_points[0]
             self.goal = [*safe_points[1], np.random.uniform(1, 5)]
 
@@ -216,7 +217,7 @@ class FSPPEnv(gym.Env):
         self._start_mrs_node('roslaunch mrs_uav_general core.launch',
             waiter=self.ros_waiter.wait_for_odometry)
         
-        time.sleep(4)
+        time.sleep(8)
 
     def _kill_nodes(self):
         kill_path = os.path.join(filepath.parent, 'kill.sh')

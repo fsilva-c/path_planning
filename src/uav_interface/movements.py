@@ -43,7 +43,7 @@ class Movements:
             rospy.sleep(0.1)
 
     def takeoff(self):
-        # rospy.loginfo("DECOLANDO UAV...")
+        # rospy.loginfo("CALL TAKEOFF...")
             
         srv_name = f'/uav{self.uav_id}/uav_manager/takeoff'
 
@@ -67,7 +67,7 @@ class Movements:
             srv_takeoff(req)
         except rospy.ServiceException as e:
             rospy.logerr(f'Erro ao chamar o serviço {srv_name}: {e}')
-
+        # rospy.loginfo("DECOLANDO UAV...")
         # "aguarde" enquanto não decolar...
         while self.uav_info.get_active_tracker() != "MpcTracker":
             rospy.sleep(0.1)
